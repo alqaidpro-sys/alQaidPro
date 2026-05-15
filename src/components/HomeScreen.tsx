@@ -18,6 +18,13 @@ interface ServiceItem {
 
 export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: (t: string, svcId?: string | null) => void, balance?: number, cartCount?: number }) {
   const [showProfile, setShowProfile] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+
+  const SAMPLE_NOTIFS = [
+    { id: 1, title: "تم تنفيذ طلبك بنجاح ✅", desc: "تم شحن اشتراك ChatGPT Plus الخاص بك، استمتع بالخدمة الآن.", time: "منذ 15 دقيقة", icon: "🤖", color: "#10b981" },
+    { id: 2, title: "عروض نهاية الأسبوع 🔥", desc: "خصومات تصل إلى 90% على جميع خدمات الألعاب والترفيه لفترة محدودة.", time: "منذ ساعتين", icon: "⚡", color: "#f59e0b" },
+    { id: 3, title: "تحديث جديد للنشرة 🗞️", desc: "تم إضافة طرق دفع جديدة تشمل إنستا باي وفودافون كاش.", time: "أمس، 10:00 ص", icon: "🏦", color: "#3b82f6" },
+  ];
 
   return (
     <div style={{ paddingBottom: 110 }}>
@@ -45,9 +52,10 @@ export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: 
             <span style={{ fontSize: 16 }}>🛒</span>
             {cartCount > 0 && <div style={{ position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, background: "#ef4444", border: `2px solid #050810`, color: "white", fontSize: 9, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{cartCount}</div>}
           </div>
-          <div className="tap" style={{
+          <div onClick={() => setShowNotifs(true)} className="tap" style={{
             width: 36, height: 36, borderRadius: 10, background: "#0f172a", border: "1px solid rgba(255,255,255,0.05)",
             display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+            cursor: "pointer"
           }}>
             <span style={{ fontSize: 16 }}>🔔</span>
             <div style={{ position: "absolute", top: 8, right: 8, width: 6, height: 6, borderRadius: "50%", background: "#ef4444", border: `2px solid #0f172a` }} />
@@ -296,6 +304,60 @@ export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: 
               color: "#fff", border: "none", fontSize: 14, fontWeight: 900, fontFamily: G.font,
               boxShadow: "0 10px 20px rgba(59,130,246,0.3)"
             }}>إغلاق النافذة</button>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Modal */}
+      {showNotifs && (
+        <div onClick={() => setShowNotifs(false)} style={{ 
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", 
+          backdropFilter: "blur(12px)", zIndex: 2000, 
+          display: "flex", alignItems: "flex-end", justifyContent: "center"
+        }}>
+          <div onClick={e => e.stopPropagation()} className="fadeUp" style={{ 
+            background: "#050810", borderTop: "1px solid rgba(255,255,255,0.1)", 
+            borderRadius: "32px 32px 0 0", width: "100%", maxWidth: 480, padding: "24px 20px 44px", 
+            position: "relative", boxShadow: "0 -20px 50px rgba(0,0,0,0.5)"
+          }}>
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.1)", margin: "0 auto 20px" }} />
+            
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ fontWeight: 900, fontSize: 18, color: G.text, fontFamily: G.font }}>الإشعارات والتنبيهات</div>
+              <div onClick={() => setShowNotifs(false)} className="tap" style={{ 
+                width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.05)", 
+                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 
+              }}>✕</div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: "60vh", overflowY: "auto" }}>
+              {SAMPLE_NOTIFS.map((notif, idx) => (
+                <div key={notif.id} className="fadeUp" style={{ 
+                  background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", 
+                  padding: 16, borderRadius: 20, display: "flex", gap: 14, animationDelay: `${idx * 0.1}s`
+                }}>
+                  <div style={{ 
+                    width: 44, height: 44, borderRadius: 14, 
+                    background: `${notif.color}15`, display: "flex", 
+                    alignItems: "center", justifyContent: "center", fontSize: 20, shrink: 0
+                  }}>{notif.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: G.text, fontFamily: G.font, marginBottom: 4, textAlign: "right" }}>{notif.title}</div>
+                    <div style={{ fontSize: 11, color: G.sub, fontFamily: G.font, lineHeight: 1.5, marginBottom: 8, textAlign: "right" }}>{notif.desc}</div>
+                    <div style={{ fontSize: 9, color: G.blue, fontWeight: 700, fontFamily: G.font, textAlign: "right" }}>{notif.time}</div>
+                  </div>
+                </div>
+              ))}
+              
+              <div style={{ textAlign: "center", padding: "20px 0", opacity: 0.5 }}>
+                <div style={{ fontSize: 11, color: G.sub, fontFamily: G.font }}>لقد وصلت لنهاية الإشعارات ✨</div>
+              </div>
+            </div>
+
+            <button onClick={() => setShowNotifs(false)} className="tap" style={{ 
+              width: "100%", marginTop: 24, padding: 16, borderRadius: 16, background: "rgba(255,255,255,0.05)", 
+              color: G.text, border: "1px solid rgba(255,255,255,0.08)", fontSize: 14, fontWeight: 800, fontFamily: G.font
+            }}>فهمت، شكراً</button>
           </div>
         </div>
       )}
