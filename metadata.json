@@ -1,0 +1,8 @@
+{
+  "name": "القائد للخدمات الذكية",
+  "description": "منصة متكاملة للخدمات اللوجستية، اشتراكات الذكاء الاصطناعي، شحن الألعاب، والخدمات المالية بأسعار تنافسية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

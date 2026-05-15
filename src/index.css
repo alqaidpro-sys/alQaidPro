@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --sett-bg: #0a0d16;
+  --sett-surface: #111622;
+  --sett-surface2: #181f30;
+  --sett-surface3: #1f2840;
+  --sett-border: #222b40;
+  --sett-border2: #2e3a55;
+  --sett-accent: #4a7cff;
+  --sett-accent-rgb: 74,124,255;
+  --sett-accent2: #7c5cfc;
+  --sett-accent-soft: rgba(74,124,255,0.13);
+  --sett-text: #e6eaf6;
+  --sett-text2: #8a95b8;
+  --sett-text3: #4a5470;
+  --sett-green: #25d49c;
+  --sett-orange: #ffaa2e;
+  --sett-red: #ff4d6a;
+  --sett-yellow: #f5c842;
+  --sett-radius: 20px;
+}
+
+@keyframes marqueeLTR {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.marquee-ltr {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marqueeLTR 20s linear infinite;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fadeUp {
+  animation: fadeUp 0.5s ease-out forwards;
+}
+
+.fadeDown {
+  animation: fadeDown 0.5s ease both;
+}
+
+.tap:active {
+  transform: scale(0.96);
+  opacity: 0.8;
+}
+
+.tap {
+  transition: all 0.2s;
+  cursor: pointer;
+}
