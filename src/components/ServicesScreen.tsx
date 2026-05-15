@@ -96,7 +96,7 @@ const ALL_SERVICES_GROUPS = [
   }
 ];
 
-export function ServicesScreen({ setTab }: any) {
+export function ServicesScreen({ setTab, cartCount = 0 }: any) {
   const [search, setSearch] = useState("");
 
   const renderGroup = (group: any, idx: number) => {
@@ -196,6 +196,19 @@ export function ServicesScreen({ setTab }: any) {
   return (
     <div style={{ background: G.bg, minHeight: "100vh", paddingBottom: 110 }} dir="rtl">
 
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "48px 20px 16px" }}>
+        <div style={{ fontSize: 20, fontWeight: 900, color: G.text, fontFamily: G.font }}>استكشف الخدمات</div>
+        <div onClick={() => setTab("cart")} className="tap" style={{
+          width: 38, height: 38, borderRadius: 12, background: "#0f172a", border: "1px solid rgba(255,255,255,0.05)",
+          display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+          cursor: "pointer"
+        }}>
+          <span style={{ fontSize: 18 }}>🛒</span>
+          {cartCount > 0 && <div style={{ position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, background: "#ef4444", border: `2px solid #050810`, color: "white", fontSize: 9, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{cartCount}</div>}
+        </div>
+      </div>
+
       {/* Search Header */}
       <div style={{ padding: "0 20px 12px" }}>
         <div style={{ position: "relative" }}>
@@ -238,9 +251,10 @@ export function ServicesScreen({ setTab }: any) {
               zIndex: 2 
             }} />
             
-            <div className="marquee-ltr" style={{ fontSize: 13, color: G.blue, fontWeight: 700, fontFamily: G.font }}>
-              🔥 تم إضافة خدمات شحن الألعاب الجديدة &nbsp; &nbsp; • &nbsp; &nbsp; ⚡ خصومات تصل إلى 85% على جميع اشتراكات الذكاء الاصطناعي &nbsp; &nbsp; • &nbsp; &nbsp; 🛡️ حماية كاملة لبياناتك وعملياتك المالية &nbsp; &nbsp; • &nbsp; &nbsp; 🚀 وسيط تسوق دولي متاح الآن في قسم اللوجستيات &nbsp; &nbsp; • &nbsp; &nbsp; 🤖 ChatGPT Plus متاح الآن بخصم فوري وحصري &nbsp; &nbsp; • &nbsp; &nbsp; 💎 Gemini Advanced يدعم اللغة العربية بدقة متناهية &nbsp; &nbsp; • &nbsp; &nbsp; 🎨 توليد صور احترافية بالذكاء الاصطناعي في ثوانٍ معدودة &nbsp; &nbsp; • &nbsp; &nbsp; 📱 فودافون كاش: اشحن محفظتك بضغطة زر واحدة &nbsp; &nbsp; • &nbsp; &nbsp; 📶 اتصالات كاش: تحويلات مالية فورية على مدار الساعة &nbsp; &nbsp; • &nbsp; &nbsp; 🟠 أورانج كاش: أسرع خدمة شحن رصيد في مصر &nbsp; &nbsp; • &nbsp; &nbsp; 🏦 إنستا باي: ربط مباشر وحصري لعملياتك المالية &nbsp; &nbsp; • &nbsp; &nbsp; 🪙 USDT (TRC20): أسعار منافسة وسرعة في التنفيذ &nbsp; &nbsp; • &nbsp; &nbsp; 🎮 شدات ببجي (PUBG): شحن فوري عن طريق الـ ID &nbsp; &nbsp; • &nbsp; &nbsp; 🔥 جواهر فري فاير (Free Fire): عروض يومية متجددة &nbsp; &nbsp; • &nbsp; &nbsp; 🎭 شاهد VIP: استمتع بأحدث المسلسلات والأفلام بخصم 85% &nbsp; &nbsp; • &nbsp; &nbsp; 📺 نتفليكس (Netflix Premium): اشتراك 4K بأقل الأسعار &nbsp; &nbsp; • &nbsp; &nbsp; 🎵 سبوتيفاي (Spotify): موسيقى بلا حدود وبدون إعلانات &nbsp; &nbsp; • &nbsp; &nbsp; 📦 شراء من تيمو (Temu): وسيطك الموثوق للتسوق من الصين &nbsp; &nbsp; • &nbsp; &nbsp; 🌐 علي إكسبريس (AliExpress): شحن دولي لباب البيت &nbsp; &nbsp; • &nbsp; &nbsp; 💳 شحن رصيد أمازون: بطاقات هدايا أمريكية ومصرية &nbsp; &nbsp; • &nbsp; &nbsp; 🧠 Claude 3.5 Pro: أذكى نموذج لغوي متاح الآن للمحترفين &nbsp; &nbsp; • &nbsp; &nbsp; ✨ Midjourney Pro: حول خيالك لصور واقعية مذهلة &nbsp; &nbsp; • &nbsp; &nbsp; 🎙️ ElevenLabs: أفضل تقنية لتمثيل الصوت بالذكاء الاصطناعي &nbsp; &nbsp; • &nbsp; &nbsp; 🎬 CapCut Pro: أدوات مونتاج احترافية لاشتراكك الشهري &nbsp; &nbsp; • &nbsp; &nbsp; 🔍 Perplexity Pro: ابحث بذكاء واحصل على إجابات موثقة &nbsp; &nbsp; • &nbsp; &nbsp; 🏰 Disney+: عالم من السحر والترفيه بين يديك &nbsp; &nbsp; • &nbsp; &nbsp; ▶️ YouTube Premium: وداعاً للإعلانات المزعجة للأبد &nbsp; &nbsp; • &nbsp; &nbsp; 🦅 Mobile Legends: شحن ألماس فوري لجميع السيرفرات &nbsp; &nbsp; • &nbsp; &nbsp; 🛡️ Valorant Points: نقاط فالورانت بأسعار الجملة &nbsp; &nbsp; • &nbsp; &nbsp; 🔫 Call of Duty Mobile: شحن CP فوري وآمن 100% &nbsp; &nbsp; • &nbsp; &nbsp; 🕹️ Steam Gift Cards: اشحن رصيد ستيم وابدأ اللعب فوراً &nbsp; &nbsp; • &nbsp; &nbsp; 🛍️ Google Play: بطاقات جوجل بلاي لجميع المتاجر &nbsp; &nbsp; • &nbsp; &nbsp; 🤖 تكنولوجيا GPT-4o متاحة الآن لجميع مستخدمي المنصة &nbsp; &nbsp; • &nbsp; &nbsp; 🌍 Pyypl: شحن محفظة بيبل الدولية للتسوق عبر الإنترنت &nbsp; &nbsp; • &nbsp; &nbsp; 💰 عمولة 0% على جميع عمليات الشحن بالمحفظة لفترة محدودة &nbsp; &nbsp; • &nbsp; &nbsp; ✍️ صانع المحتوى الإبداعي يساعدك في كتابة مقالاتك بسرعة &nbsp; &nbsp; • &nbsp; &nbsp; 📝 تلخيص النصوص الذكي يدعم الآن الملفات الطويلة جداً &nbsp; &nbsp; • &nbsp; &nbsp; 🎰 شحن رصيد روبلوكس (Roblox) بأسعار غير قابلة للمنافسة &nbsp; &nbsp; • &nbsp; &nbsp; 💳 بطاقات فيزا وماستركارد افتراضية قريباً في قسم المالية &nbsp; &nbsp; • &nbsp; &nbsp; 🚀 تحديث جديد للتطبيق يحسن سرعة تصفح الخدمات بنسبة 50% &nbsp; &nbsp; • &nbsp; &nbsp; 🌟 شكراً لأكثر من 50 ألف مستخدم على ثقتهم الغالية بنا
-            </div>
+            <div className="marquee-ltr" 
+                 style={{ fontSize: 13, color: G.blue, fontWeight: 700, fontFamily: G.font }}
+                 dangerouslySetInnerHTML={{ __html: G.ticker }} 
+            />
           </div>
         </div>
       )}

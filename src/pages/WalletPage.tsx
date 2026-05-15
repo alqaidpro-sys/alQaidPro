@@ -128,7 +128,7 @@ function Badge({ label, color }: any) {
   return <span style={{ padding: "2px 8px", fontSize: 9, fontWeight: 800, borderRadius: 20, background: `${color}20`, color, border: `1px solid ${color}30`, display: "inline-block", whiteSpace: "nowrap" }}>{label}</span>;
 }
 
-export default function WalletPage({ balance = 5000, setBalance }: any) {
+export default function WalletPage({ balance = 5000, setBalance, onBack }: any) {
   const [points,  setPoints]    = useState(450);
   const [txs, setTxs]           = useState(SAMPLE_TXS);
   const [step, setStep]         = useState("main");
@@ -201,8 +201,9 @@ export default function WalletPage({ balance = 5000, setBalance }: any) {
         <div style={{ position: "relative", zIndex: 1 }}>
 
           {/* Header */}
-          <div style={{ padding: "50px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
+          <div style={{ padding: "50px 20px 0", display: "flex", gap: 15, alignItems: "center" }}>
+            <div className="tap" onClick={onBack} style={{ width: 42, height: 42, borderRadius: 12, background: T.surface, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: T.text, fontSize: 20 }}>&#8594;</div>
+            <div style={{ flex: 1 }}>
               <h1 style={{ fontSize: 22, fontWeight: 900, color: T.text }}>المحفظة الرقمية</h1>
               <p style={{ fontSize: 11, color: T.sub, marginTop: 3 }}>رصيدك ومعاملاتك</p>
             </div>

@@ -12,6 +12,7 @@ import { ServicesScreen } from "./components/ServicesScreen";
 import { HistoryScreen } from "./components/HistoryScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { ServiceDetailScreen } from "./components/ServiceDetailScreen";
+import { CartScreen } from "./components/CartScreen";
 import { BottomNav } from "./components/BottomNav";
 
 // New Pages
@@ -32,6 +33,17 @@ export default function App() {
   const [serviceDetail, setServiceDetail] = useState(null);
   const [balance, setBalance] = useState(5000);
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
+  const [cart, setCart] = useState<any[]>([]);
+
+  const handleAddToCart = (item: any) => {
+    setCart(prev => [...prev, { ...item, cartId: Date.now().toString() }]);
+  };
+
+  const handleRemoveFromCart = (cartId: string) => {
+    setCart(prev => prev.filter(item => item.cartId !== cartId));
+  };
+
+  const handleClearCart = () => setCart([]);
 
   const handleSetTab = (t: string, svcId: string | null = null) => { 
     setTab(t); 
@@ -40,27 +52,32 @@ export default function App() {
   };
 
   const renderScreen = () => {
-    if (serviceDetail) return (
-      <motion.div key="detail" initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -100, opacity: 0 }}>
-        <ServiceDetailScreen service={serviceDetail} onBack={() => setServiceDetail(null)} />
-      </motion.div>
-    );
-
     const screens: any = {
-      "home": <HomeScreen setTab={handleSetTab} balance={balance} />,
-      "services": <ServicesScreen setServiceDetail={setServiceDetail} setTab={handleSetTab} />,
-      "wallet": <WalletPage balance={balance} setBalance={setBalance} />,
-      "logistics": <LogisticsPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} />,
-      "ai_subs": <AISubsPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} />,
-      "tv_subs": <TVSubsPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} />,
-      "games": <GamesPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} />,
+      "home": <HomeScreen setTab={handleSetTab} balance={balance} cartCount={cart.length} />,
+      "services": <ServicesScreen setServiceDetail={setServiceDetail} setTab={handleSetTab} cartCount={cart.length} />,
+      "wallet": <WalletPage balance={balance} setBalance={setBalance} onBack={() => handleSetTab("home")} />,
+      "logistics": <LogisticsPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
+      "ai_subs": <AISubsPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
+      "tv_subs": <TVSubsPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
+      "games": <GamesPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
       "real_ai": <RealAIPage onBack={() => { handleSetTab("home"); }} initialTool={activeServiceId} />,
-      "paypal": <PayPalPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} />,
-      "binance": <BinancePage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} />,
-      "pyypl": <PyyplPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} />,
-      "usd_transfer": <USDTransferPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} />,
-      "history": <HistoryScreen />,
-      "settings": <SettingsScreen />,
+      "paypal": <PayPalPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
+      "binance": <BinancePage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
+      "pyypl": <PyyplPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
+      "usd_transfer": <USDTransferPage balance={balance} setBalance={setBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
+      "history": <HistoryScreen onBack={() => handleSetTab("home")} />,
+      "settings": <SettingsScreen onBack={() => handleSetTab("home")} />,
+      "cart": (
+        <CartScreen 
+          cart={cart} 
+          onRemove={handleRemoveFromCart} 
+          onClear={handleClearCart} 
+          onBack={() => handleSetTab("home")} 
+          balance={balance}
+          setBalance={setBalance}
+          setTab={handleSetTab}
+        />
+      ),
     };
 
     return (
@@ -72,7 +89,19 @@ export default function App() {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
-          {screens[tab] || <HomeScreen setTab={handleSetTab} balance={balance} />}
+          {serviceDetail ? (
+          <motion.div key="detail" initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -100, opacity: 0 }}>
+            <ServiceDetailScreen 
+              service={serviceDetail} 
+              onBack={() => setServiceDetail(null)} 
+              onAddToCart={handleAddToCart}
+            />
+          </motion.div>
+        ) : (
+          <>
+            {screens[tab] || <HomeScreen setTab={handleSetTab} balance={balance} />}
+          </>
+        )}
         </motion.div>
       </AnimatePresence>
     );

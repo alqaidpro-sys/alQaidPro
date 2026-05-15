@@ -21,13 +21,44 @@ const T = {
   font: "Cairo, sans-serif"
 };
 
-export function SettingsScreen() {
+export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const [masterNotif, setMasterNotif] = useState(true);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [sound, setSound] = useState("افتراضي");
   const [isDark, setIsDark] = useState(true);
 
-  const showToast = (msg: string) => alert(msg); // Placeholder for actual toast
+  // Profile State
+  const [profile, setProfile] = useState({
+    name: "",
+    country: "",
+    province: "",
+    city: "",
+    address: "",
+    phone: ""
+  });
+
+  const COUNTRIES = [
+    { n: "مصر", f: "🇪🇬" },
+    { n: "السعودية", f: "🇸🇦" },
+    { n: "الإمارات", f: "🇦🇪" },
+    { n: "الكويت", f: "🇰🇼" },
+    { n: "قطر", f: "🇶🇦" },
+    { n: "البحرين", f: "🇧🇭" },
+    { n: "عمان", f: "🇴🇲" },
+    { n: "الأردن", f: "🇯🇴" },
+    { n: "العراق", f: "🇮🇶" },
+    { n: "لبنان", f: "🇱🇧" },
+    { n: "المغرب", f: "🇲🇦" },
+    { n: "تونس", f: "🇹🇳" },
+    { n: "الجزائر", f: "🇩🇿" }
+  ];
+  const EGYPT_PROVINCES = [
+    "القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "البحر الأحمر", "البحيرة", "الفيوم", "الغربية", "الإسماعيلية", 
+    "المنوفية", "المنيا", "القليوبية", "الوادي الجديد", "السويس", "الشرقية", "دمياط", "بورسعيد", "جنوب سيناء", 
+    "بني سويف", "سوهاج", "الأقصر", "أسوان", "كفر الشيخ", "قنا", "شمال سيناء", "مطروح"
+  ];
+
+  const showToast = (msg: string) => alert(msg);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -76,13 +107,18 @@ export function SettingsScreen() {
     <div style={{ padding: "0 16px 110px", maxWidth: 480, margin: "0 auto" }}>
       {/* Header */}
       <div className="fadeDown" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "54px 0 26px" }}>
-        <div className="tap" style={{ width: 42, height: 42, borderRadius: 13, background: T.surface, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: T.text2, fontSize: 19 }}>&#8594;</div>
+        <div className="tap" onClick={onBack} style={{ width: 42, height: 42, borderRadius: 13, background: T.surface, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: T.text2, fontSize: 19 }}>&#8594;</div>
         <div style={{ textAlign: "center" }}>
           <h1 style={{ fontSize: 21, fontWeight: 800, color: T.text, fontFamily: T.font }}>إعدادات التطبيق</h1>
           <span style={{ fontSize: 12, color: T.text3, fontFamily: T.font }}>خصّص تجربتك بالكامل</span>
         </div>
         <div className="tap" onClick={toggleTheme} style={{ width: 42, height: 42, borderRadius: 13, background: T.surface, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19 }}>{isDark ? "🌙" : "☀️"}</div>
       </div>
+
+      {/* Profile Info */}
+      <Section title="الحساب والمعلومات">
+        <Row icon="👤" name="بياناتي" sub="العنوان، رقم الهاتف، والبيانات الشخصية" onClick={() => setActiveModal("profile")} badgeColor="rgba(59,130,246,.14)" />
+      </Section>
 
       {/* Notifications */}
       <Section title="الإشعارات">
@@ -121,6 +157,103 @@ export function SettingsScreen() {
           <div onClick={e => e.stopPropagation()} className="fadeUp" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: "26px 26px 0 0", width: "100%", maxWidth: 480, padding: "20px 20px 44px" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: T.border2, margin: "0 auto 18px" }} />
             
+            {activeModal === "profile" && (
+              <div dir="rtl">
+                <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 8, color: T.text, fontFamily: T.font, textAlign: "right" }}>👤 بياناتي</div>
+                <div style={{ fontSize: 12, color: T.orange, background: "rgba(255,170,46,0.1)", padding: "10px 14px", borderRadius: 12, marginBottom: 20, fontFamily: T.font, textAlign: "right", border: `1px solid rgba(255,170,46,0.2)` }}> 
+                  ⚠️ تنبيه: هذه البيانات هي التي سيتم إرسال جميع طلباتك وشحناتك إليها، يرجى التأكد من صحتها.
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, maxHeight: "60vh", overflowY: "auto", padding: "0 4px 20px" }}>
+                  {/* Name */}
+                  <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>الاسم الكامل</label>
+                    <input 
+                      type="text" 
+                      value={profile.name} 
+                      onChange={(e) => setProfile({...profile, name: e.target.value})}
+                      placeholder="أدخل اسمك بالكامل"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
+                    />
+                  </div>
+
+                  {/* Country */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>البلد</label>
+                    <select 
+                      value={profile.country} 
+                      onChange={(e) => setProfile({...profile, country: e.target.value, province: ""})}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13, appearance: "none" }}
+                    >
+                      <option value="" style={{ background: "#000" }}>اختر البلد</option>
+                      {COUNTRIES.map(c => <option key={c.n} value={c.n} style={{ background: "#000" }}>{c.f} {c.n}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Phone */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>رقم الهاتف</label>
+                    <input 
+                      type="tel" 
+                      value={profile.phone} 
+                      onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                      placeholder="رقم الهاتف"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
+                    />
+                  </div>
+
+                  {/* Province (Only for Egypt) */}
+                  {profile.country === "مصر" && (
+                    <div className="fadeDown" style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>المحافظة</label>
+                      <select 
+                        value={profile.province} 
+                        onChange={(e) => setProfile({...profile, province: e.target.value})}
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13, appearance: "none" }}
+                      >
+                        <option value="" style={{ background: "#000" }}>اختر المحافظة</option>
+                        {EGYPT_PROVINCES.map(p => <option key={p} value={p} style={{ background: "#000" }}>{p}</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* City */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>المدينة</label>
+                    <input 
+                      type="text" 
+                      value={profile.city} 
+                      onChange={(e) => setProfile({...profile, city: e.target.value})}
+                      placeholder="المدينة"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
+                    />
+                  </div>
+
+                  {/* Address */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>العنوان</label>
+                    <input 
+                      type="text" 
+                      value={profile.address} 
+                      onChange={(e) => setProfile({...profile, address: e.target.value})}
+                      placeholder="العنوان بالتفصيل"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                  <button 
+                    onClick={() => { showToast("✅ تم حفظ البيانات بنجاح"); setActiveModal(null); }} 
+                    className="tap" 
+                    style={{ flex: 1, padding: 14, background: T.accent, borderRadius: 14, color: "white", fontWeight: 800, fontFamily: T.font, border: "none" }}
+                  >
+                    حفظ البيانات
+                  </button>
+                </div>
+              </div>
+            )}
+
             {activeModal === "sound" && (
               <>
                 <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 14, color: T.text, fontFamily: T.font }}>🔊 صوت الإشعار</div>

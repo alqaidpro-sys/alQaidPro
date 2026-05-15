@@ -88,11 +88,12 @@ function SuccessModal({phone,amount,egp,onClose}: any){
   );
 }
 
-export default function PyyplPage({balance=5000,setBalance,onBack}: any){
+export default function PyyplPage({balance=5000,setBalance,onBack,onAddToCart}: any){
   const [phone,setPhone]=useState("");
   const [amount,setAmount]=useState("");
   const [loading,setLoading]=useState(false);
   const [showModal,setShowModal]=useState(false);
+  const [showAdded,setShowAdded]=useState(false);
   const [error,setError]=useState("");
 
   const num=parseFloat(amount)||0;
@@ -108,6 +109,15 @@ export default function PyyplPage({balance=5000,setBalance,onBack}: any){
       if(setBalance) setBalance((b: number)=>b-egp);
       setLoading(false);setShowModal(true);
     },1800);
+  };
+
+  const handleAddToCartInternal = () => {
+    if(!phone.trim()||phone.trim().length<8){setError("يرجى إدخال رقم هاتف صحيح");return;}
+    if(num<5){setError("الحد الأدنى للشحن هو $5");return;}
+    if(onAddToCart) {
+      onAddToCart({ name: "شحن Pyypl", icon: "🌐", total: egp, fields: { "الهاتف": phone, "المبلغ": `$${num}` } });
+      setShowAdded(true);
+    }
   };
 
   const inputStyle={width:"100%",background:C.input,border:`1px solid ${C.border}`,borderRadius:12,color:C.text,fontSize:14,padding:"14px 16px"};
@@ -201,10 +211,53 @@ export default function PyyplPage({balance=5000,setBalance,onBack}: any){
 
           {error&&<div style={{fontSize:12,color:C.red,background:"rgba(224,85,85,.07)",border:"1px solid rgba(224,85,85,.2)",borderRadius:10,padding:"10px 14px",textAlign:"center"}}>⚠️ {error}</div>}
 
-          <button className="btn" onClick={handleBuy} disabled={loading}
-            style={{width:"100%",padding:"18px",borderRadius:14,fontSize:18,fontWeight:900,marginTop:6,background:canBuy?`linear-gradient(135deg,${C.yellow},#b8890f)`:C.card,color:canBuy?"#1a0f00":C.sub2,border:canBuy?"none":`1px solid ${C.border}`,boxShadow:canBuy?`0 4px 28px rgba(212,160,23,.3)`:"none"}}>
-            {loading?<span style={{display:"inline-flex",alignItems:"center",gap:10}}><span style={{width:18,height:18,border:"2px solid rgba(0,0,0,.2)",borderTopColor:"#1a0f00",borderRadius:"50%",animation:"spin 1s linear infinite",display:"inline-block"}}/>جاري الشحن...</span>:"شحن Pyypl ⚡"}
-          </button>
+          <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+            <button className="btn" onClick={handleBuy} disabled={loading}
+              style={{flex: 1, padding:"18px",borderRadius:14,fontSize:18,fontWeight:900,background:canBuy?`linear-gradient(135deg,${C.yellow},#b8890f)`:C.card,color:canBuy?"#1a0f00":C.sub2,border:canBuy?"none":`1px solid ${C.border}`,boxShadow:canBuy?`0 4px 28px rgba(212,160,23,.3)`:"none"}}>
+              {loading?<span style={{display:"inline-flex",alignItems:"center",gap:10}}><span style={{width:18,height:18,border:"2px solid rgba(0,0,0,.2)",borderTopColor:"#1a0f00",borderRadius:"50%",animation:"spin 1s linear infinite",display:"inline-block"}}/>جاري...</span>:"شحن Pyypl ⚡"}
+            </button>
+            <button className="tap" onClick={handleAddToCartInternal}
+              style={{ width: 64, height: 64, borderRadius: 14, background: C.card, color: C.blue, border: `1px solid ${C.border}`, fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              🛒
+            </button>
+          </div>
+
+          {/* Added to Cart Modal */}
+          {showAdded && (
+            <div style={{
+              position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+              background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: 24, zIndex: 2000
+            }}>
+              <div className="fadeUp" style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 24, padding: 32, width: "100%", maxWidth: 350,
+                textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: C.text, marginBottom: 8 }}>تمت الإضافة للسلة</div>
+                <div style={{ fontSize: 13, color: C.sub, marginBottom: 24 }}>الخدمة الآن في سلة مشترياتك، يمكنك المتابعة أو إتمام الدفع</div>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <button 
+                    className="tap" 
+                    onClick={() => setShowAdded(false)}
+                    style={{ width: "100%", padding: 14, borderRadius: 12, background: C.blue, color: "white", fontSize: 14, fontWeight: 800, border: "none" }}
+                  >
+                    أكمل تسوق
+                  </button>
+                  <button 
+                    className="tap" 
+                    onClick={onBack}
+                    style={{ width: "100%", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.05)", color: C.text, fontSize: 14, fontWeight: 700, border: `1px solid ${C.border}` }}
+                  >
+                    العودة للرئيسية
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{marginTop:12}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}><span style={{fontSize:16}}>🛡️</span><span style={{fontSize:13,color:C.sub,fontWeight:700}}>الدعم والمساعدة</span></div>

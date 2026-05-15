@@ -16,7 +16,7 @@ interface ServiceItem {
   hasDuration?: boolean;
 }
 
-export function HomeScreen({ setTab, balance = 5000 }: { setTab: (t: string, svcId?: string | null) => void, balance?: number }) {
+export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: (t: string, svcId?: string | null) => void, balance?: number, cartCount?: number }) {
   const [showProfile, setShowProfile] = useState(false);
 
   return (
@@ -37,6 +37,14 @@ export function HomeScreen({ setTab, balance = 5000 }: { setTab: (t: string, svc
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <div onClick={() => setTab("cart")} className="tap" style={{
+            width: 36, height: 36, borderRadius: 10, background: "#0f172a", border: "1px solid rgba(255,255,255,0.05)",
+            display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+            cursor: "pointer"
+          }}>
+            <span style={{ fontSize: 16 }}>🛒</span>
+            {cartCount > 0 && <div style={{ position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, background: "#ef4444", border: `2px solid #050810`, color: "white", fontSize: 9, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{cartCount}</div>}
+          </div>
           <div className="tap" style={{
             width: 36, height: 36, borderRadius: 10, background: "#0f172a", border: "1px solid rgba(255,255,255,0.05)",
             display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
@@ -97,10 +105,40 @@ export function HomeScreen({ setTab, balance = 5000 }: { setTab: (t: string, svc
               flex: 1, background: G.blue, padding: "10px", borderRadius: 12, color: "white", fontSize: 12, fontWeight: 800, border: "none", fontFamily: G.font,
               boxShadow: "0 6px 16px rgba(59,142,247,0.25)"
             }}>شحن الرصيد</button>
-            <button className="tap" style={{
+            <button className="tap" onClick={() => setTab("services")} style={{
               flex: 1, background: "rgba(255,255,255,0.05)", padding: "10px", borderRadius: 12, color: G.text, fontSize: 12, fontWeight: 800, border: "1px solid rgba(255,255,255,0.08)", fontFamily: G.font
             }}>تحويل أموال</button>
           </div>
+        </div>
+      </div>
+
+      {/* Wide News Ticker */}
+      <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 20, animationDelay: "0.1s" }}>
+        <div style={{ 
+          background: "rgba(59,130,246,0.06)", 
+          border: "1px solid rgba(59,130,246,0.12)", 
+          borderRadius: 12, 
+          padding: "10px 0",
+          overflow: "hidden",
+          position: "relative",
+          display: "flex",
+          alignItems: "center"
+        }}>
+          <div style={{ 
+            position: "absolute", right: 0, top: 0, bottom: 0, width: 40, 
+            background: "linear-gradient(to left, #050810, transparent)", 
+            zIndex: 2 
+          }} />
+          <div style={{ 
+            position: "absolute", left: 0, top: 0, bottom: 0, width: 40, 
+            background: "linear-gradient(to right, #050810, transparent)", 
+            zIndex: 2 
+          }} />
+          
+          <div className="marquee-ltr" 
+               style={{ fontSize: 13, color: G.blue, fontWeight: 700, fontFamily: G.font }}
+               dangerouslySetInnerHTML={{ __html: G.ticker }} 
+          />
         </div>
       </div>
 

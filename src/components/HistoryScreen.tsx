@@ -1,23 +1,45 @@
 import { useState } from "react";
-import { G, TRANSACTIONS } from "../data";
+import { G } from "../data";
 
-export function HistoryScreen() {
+// Status stages definition
+const STAGES = [
+  { label: "قيد المراجعة", color: "#FBBF24", icon: "⏳" },
+  { label: "تم الموافقة على الطلب", color: "#3B82F6", icon: "✅" },
+  { label: "جاري العمل على الطلب", color: "#F97316", icon: "⚙️" },
+  { label: "تم تنفيذ الطلب", color: "#10B981", icon: "🚀" },
+];
+
+// Sample Transactions to show the feature
+const SAMPLE_TRANSACTIONS = [
+  { id: "TX-92841", name: "اشتراك Netflix Premium", date: "منذ 15 دقيقة", amount: "£250", icon: "🍿", color: "#E50914", type: "TV_SERVICE", status: "processing", stage: 2 },
+  { id: "TX-77102", name: "شحن شدات PUBG Mobile", date: "اليوم، 10:30 صباحاً", amount: "£1,200", icon: "🔫", color: "#10b981", type: "GAMING", status: "completed", stage: 3 },
+  { id: "TX-44129", name: "ChatGPT Plus Pro", date: "أمس، 09:12 مساءً", amount: "£550", icon: "🤖", color: "#10b981", type: "AI_SERVICE", status: "approved", stage: 1 },
+  { id: "TX-11029", name: "مشتريات Temu Logistics", date: "منذ يومين", amount: "£8,400", icon: "🛍️", color: "#f97316", type: "TOPUP", status: "review", stage: 0 },
+];
+
+export function HistoryScreen({ onBack }: { onBack: () => void }) {
   const [filter, setFilter] = useState("all");
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+
   const filters = [
     { id: "all", label: "الكل" },
     { id: "AI_SERVICE", label: "ذكاء اصطناعي" },
-    { id: "AMAZON", label: "أمازون" },
+    { id: "TV_SERVICE", label: "ترفيه" },
     { id: "GAMING", label: "ألعاب" },
     { id: "TOPUP", label: "شحن" },
   ];
-  const shown = filter === "all" ? TRANSACTIONS : TRANSACTIONS.filter(t => t.type === filter);
+
+  const shown = filter === "all" ? SAMPLE_TRANSACTIONS : SAMPLE_TRANSACTIONS.filter(t => t.type === filter);
 
   return (
     <div style={{ paddingBottom: 110 }}>
       {/* Header */}
-      <div style={{ padding: "52px 20px 24px", textAlign: "right" }}>
-        <h1 style={{ fontSize: 24, fontWeight: 900, color: G.text, fontFamily: G.font }}>سجل العمليات</h1>
-        <p style={{ fontSize: 11, color: G.sub, marginTop: 4, fontFamily: G.font }}>تتبع جميع معاملاتك المالية والخدمية</p>
+      <div style={{ padding: "52px 20px 24px", display: "flex", alignItems: "center", gap: 15 }}>
+        <div className="tap" onClick={onBack} style={{ width: 42, height: 42, borderRadius: 13, background: "#0f172a", border: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", color: G.sub, fontSize: 19 }}>&#8594;</div>
+        <div style={{ flex: 1, textAlign: "right" }}>
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: G.text, fontFamily: G.font }}>سجل العمليات</h1>
+          <p style={{ fontSize: 11, color: G.sub, marginTop: 4, fontFamily: G.font }}>تتبع مراحل تنفيذ طلباتك بدقة</p>
+        </div>
       </div>
 
       {/* Filter chips */}
@@ -36,9 +58,9 @@ export function HistoryScreen() {
       {/* Transactions List */}
       <div style={{ padding: "0 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         {shown.map((tx, i) => (
-          <div key={i} className="fadeUp" style={{
+          <div key={i} onClick={() => setSelectedOrder(tx)} className="fadeUp tap" style={{
             background: "#0f172a", border: "1px solid rgba(255,255,255,0.03)", borderRadius: 20, padding: 18,
-            animationDelay: `${i * 0.05}s`,
+            animationDelay: `${i * 0.05}s`, cursor: "pointer"
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
               <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
@@ -55,10 +77,21 @@ export function HistoryScreen() {
                 </div>
               </div>
               <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 16, fontWeight: 900, color: tx.status === "refunded" ? "#ef4444" : "#10b981", fontFamily: G.font, direction: "ltr" }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: G.text, fontFamily: G.font, direction: "ltr" }}>
                   {tx.amount}
                 </div>
-                <div style={{ fontSize: 9, color: G.sub, marginTop: 2, fontFamily: G.font }}>مُكتمل</div>
+                <div style={{ 
+                  fontSize: 10, 
+                  color: STAGES[tx.stage].color, 
+                  marginTop: 4, 
+                  fontFamily: G.font, 
+                  fontWeight: 800,
+                  background: `${STAGES[tx.stage].color}15`,
+                  padding: "2px 8px",
+                  borderRadius: 6
+                }}>
+                  {STAGES[tx.stage].label}
+                </div>
               </div>
             </div>
             
@@ -67,18 +100,120 @@ export function HistoryScreen() {
               paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.03)" 
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: tx.status === "refunded" ? "#ef4444" : "#10b981" }} />
-                <span style={{ fontSize: 11, color: tx.status === "refunded" ? "#ef4444" : "#10b981", fontFamily: G.font, fontWeight: 700 }}>
-                  {tx.status === "refunded" ? "مرفوض" : "عملية ناجحة"}
-                </span>
+                <div className="pulse" style={{ width: 8, height: 8, borderRadius: "50%", background: STAGES[tx.stage].color }} />
+                <span style={{ fontSize: 10, color: G.sub, fontFamily: G.font }}>اضغط للتفاصيل والتتبع</span>
               </div>
               <div style={{ fontSize: 10, color: G.sub, fontFamily: G.font, background: "rgba(255,255,255,0.03)", padding: "4px 10px", borderRadius: 8 }}>
-                ID: #{Math.floor(Math.random()*90000) + 10000}
+                ID: #{tx.id}
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Order Tracking Modal */}
+      {selectedOrder && (
+        <div onClick={() => setSelectedOrder(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)",
+          zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24
+        }}>
+          <div onClick={e => e.stopPropagation()} className="fadeUp" style={{
+            background: "#050810", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 32,
+            width: "100%", maxWidth: 360, padding: 26, position: "relative"
+          }}>
+            {/* Header info */}
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+              <div style={{ 
+                width: 58, height: 58, borderRadius: 18, background: `${selectedOrder.color}15`,
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28
+              }}>
+                {selectedOrder.icon}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: G.text, fontFamily: G.font }}>{selectedOrder.name}</div>
+                <div style={{ fontSize: 11, color: G.sub, fontFamily: G.font, marginTop: 2 }}>معرف الطلب: #{selectedOrder.id}</div>
+              </div>
+              <div onClick={() => setSelectedOrder(null)} className="tap" style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>✕</div>
+            </div>
+
+            {/* Tracking Map (Visual Timeline) */}
+            <div style={{ position: "relative", paddingRight: 40, paddingLeft: 10 }}>
+              {/* Line background */}
+              <div style={{ 
+                position: "absolute", right: 23, top: 15, bottom: 15, width: 2, 
+                background: "rgba(255,255,255,0.05)", borderRadius: 2 
+              }} />
+              
+              {/* Active line progress */}
+              <div style={{ 
+                position: "absolute", right: 23, top: 15, width: 2, 
+                height: `${(selectedOrder.stage / (STAGES.length - 1)) * 100}%`,
+                background: `linear-gradient(to bottom, ${STAGES[0].color}, ${STAGES[selectedOrder.stage].color})`, 
+                borderRadius: 2, transition: "height 0.8s ease"
+              }} />
+
+              {/* Stages List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+                {STAGES.map((s, i) => {
+                  const isActive = i <= selectedOrder.stage;
+                  const isCurrent = i === selectedOrder.stage;
+                  
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 20, position: "relative" }}>
+                      {/* Circle Indicator */}
+                      <div style={{ 
+                        width: 14, height: 14, borderRadius: "50%", 
+                        background: isActive ? s.color : "#1e293b",
+                        border: `4px solid ${isActive ? `${s.color}30` : "transparent"}`,
+                        position: "absolute", right: -30, top: 4, zIndex: 2,
+                        transition: "all 0.3s ease",
+                        boxShadow: isCurrent ? `0 0 15px ${s.color}80` : "none"
+                      }} />
+
+                      <div>
+                        <div style={{ 
+                          fontSize: 13, fontWeight: isCurrent ? 900 : 700, 
+                          color: isActive ? G.text : G.sub, 
+                          fontFamily: G.font 
+                        }}>{s.label}</div>
+                        {isCurrent && (
+                          <div style={{ 
+                            fontSize: 10, color: s.color, background: `${s.color}15`, 
+                            padding: "3px 10px", borderRadius: 8, display: "inline-block", 
+                            marginTop: 6, fontWeight: 800, fontFamily: G.font
+                          }}>نشط حالياً ✨</div>
+                        )}
+                        {!isActive && (
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 4, fontFamily: G.font }}>بانتظار اتمام المرحلة السابقة</div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 18, opacity: isActive ? 1 : 0.2 }}>{s.icon}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Bottom */}
+            <div style={{ marginTop: 32, padding: 18, borderRadius: 20, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, color: G.sub, fontFamily: G.font }}>المبلغ الإجمالي</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: G.text, direction: "ltr" }}>{selectedOrder.amount}</span>
+               </div>
+               <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: G.sub, fontFamily: G.font }}>وقت الطلب</span>
+                  <span style={{ fontSize: 12, color: G.text, fontFamily: G.font }}>{selectedOrder.date}</span>
+               </div>
+            </div>
+
+            <button onClick={() => setSelectedOrder(null)} className="tap" style={{
+              width: "100%", marginTop: 24, padding: 16, borderRadius: 16, background: G.blue,
+              color: "#fff", border: "none", fontSize: 14, fontWeight: 900, fontFamily: G.font,
+              boxShadow: "0 10px 20px rgba(59,130,246,0.3)"
+            }}>إغلاق التتبع</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

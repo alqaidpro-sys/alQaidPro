@@ -21,7 +21,7 @@
   --sett-radius: 20px;
 }
 
-@keyframes marqueeLTR {
+@keyframes marqueeScroll {
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
 }
@@ -29,7 +29,8 @@
 .marquee-ltr {
   display: inline-block;
   white-space: nowrap;
-  animation: marqueeLTR 20s linear infinite;
+  animation: marqueeScroll 500s linear infinite;
+  animation-delay: -250s; /* Adjusted for new duration */
 }
 
 @keyframes fadeUp {

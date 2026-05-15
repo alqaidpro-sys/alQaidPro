@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { DURATIONS, G, NETWORKS, TOPUP_AMOUNTS } from "../data";
 import { BalanceBadge, InfoBanner, PrimaryBtn } from "./Shared";
 
-export function ServiceDetailScreen({ service, onBack }: { service: any, onBack: () => void }) {
+export function ServiceDetailScreen({ service, onBack, onAddToCart }: { service: any, onBack: () => void, onAddToCart: (item: any) => void }) {
   const [vals, setVals] = useState<any>({});
   const [duration, setDuration] = useState(DURATIONS?.[0] || "");
   const [showDrop, setShowDrop] = useState(false);
@@ -11,10 +12,54 @@ export function ServiceDetailScreen({ service, onBack }: { service: any, onBack:
   const [topupAmt, setTopupAmt] = useState(TOPUP_AMOUNTS?.[0] || 100);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<any>({});
+  const [showToast, setShowToast] = useState(false);
+
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
 
   const handleSubmit = () => {
+    const newErrors: any = {};
+    
+    // Check fields for email validation
+    if (!service.isTopup) {
+      service.fields.forEach((f: string) => {
+        if (f.includes("بريد")) {
+          const emailVal = vals[f] || "";
+          if (!emailVal) {
+            newErrors[f] = "يرجى إدخال البريد الإلكتروني";
+          } else if (!validateEmail(emailVal)) {
+            newErrors[f] = "صيغة البريد الإلكتروني غير صحيحة";
+          }
+        }
+      });
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
     setLoading(true);
     setTimeout(() => { setLoading(false); setSubmitted(true); }, 1500);
+  };
+
+  const handleAddToCartInternal = () => {
+    const newErrors: any = {};
+    if (!service.isTopup && service.fields) {
+      service.fields.forEach((f: string) => {
+        if (f.includes("بريد")) {
+          const emailVal = vals[f] || "";
+          if (!emailVal || !validateEmail(emailVal)) newErrors[f] = "خطأ في البريد";
+        }
+      });
+    }
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+    
+    onAddToCart({ service, vals, price: 240 });
+    setShowToast(true);
   };
 
   if (submitted) {
@@ -152,17 +197,35 @@ export function ServiceDetailScreen({ service, onBack }: { service: any, onBack:
             {service.fields.map((f: any, i: any) => (
               <div key={i}>
                 <div style={{ fontSize: 11, color: G.sub, marginBottom: 8, fontFamily: G.font }}>{f}</div>
-                <input className="inp" value={vals[f] || ""} onChange={e => setVals({ ...vals, [f]: e.target.value })}
+                <input className={`inp ${errors[f] ? "error" : ""}`} value={vals[f] || ""} onChange={e => {
+                  setVals({ ...vals, [f]: e.target.value });
+                  if (errors[f]) setErrors({ ...errors, [f]: null });
+                }}
                   placeholder={f.includes("رابط") ? "https://..." : f.includes("بريد") ? "name@example.com" : f.includes("هاتف") ? "01XXXXXXXXX" : ""}
                   dir={f.includes("رابط") || f.includes("بريد") ? "ltr" : "rtl"}
-                  style={{ width: "100%", background: "rgba(0,0,0,0.3)", border: `1px solid ${G.cardBorder}`, borderRadius: 12, padding: "12px 16px", color: G.text, fontSize: 14, fontFamily: G.font }} />
+                  style={{ 
+                    width: "100%", background: "rgba(0,0,0,0.3)", 
+                    border: `1px solid ${errors[f] ? "#ef4444" : G.cardBorder}`, 
+                    borderRadius: 12, padding: "12px 16px", color: G.text, fontSize: 14, fontFamily: G.font,
+                    outline: "none", transition: "all 0.2s"
+                  }} />
+                {errors[f] && <div style={{ fontSize: 10, color: "#ef4444", marginTop: 6, fontFamily: G.font, fontWeight: 700 }}>⚠️ {errors[f]}</div>}
               </div>
             ))}
           </div>
         )}
 
         {/* Submit */}
-        <PrimaryBtn label={loading ? "جاري الإرسال..." : service.btn} onClick={handleSubmit} color={service.color} icon={loading ? "⏳" : "✓"} />
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <PrimaryBtn label={loading ? "جاري الإرسال..." : service.btn} onClick={handleSubmit} color={service.color} icon={loading ? "⏳" : "✓"} />
+          </div>
+          <button className="tap" onClick={handleAddToCartInternal} style={{
+            width: 56, height: 56, borderRadius: 16, background: "rgba(255,255,255,0.05)",
+            border: `1px solid ${G.cardBorder}`, display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 22, cursor: "pointer"
+          }}>🛒</button>
+        </div>
 
         {/* Security note */}
         <div style={{
@@ -175,6 +238,47 @@ export function ServiceDetailScreen({ service, onBack }: { service: any, onBack:
           </div>
         </div>
       </div>
+
+      {/* Add to Cart Confirmation Modal */}
+      {showToast && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 24, zIndex: 2000
+        }}>
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            style={{
+              background: "#111827", border: `1px solid ${G.cardBorder}`,
+              borderRadius: 24, padding: 32, width: "100%", maxWidth: 350,
+              textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+            }}
+          >
+            <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: G.text, fontFamily: G.font, marginBottom: 8 }}>تمت الإضافة للسلة</div>
+            <div style={{ fontSize: 13, color: G.sub, fontFamily: G.font, marginBottom: 24 }}>الخدمة الآن في سلة مشترياتك، يمكنك المتابعة أو إتمام الدفع</div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <button 
+                className="tap" 
+                onClick={() => setShowToast(false)}
+                style={{ width: "100%", padding: 14, borderRadius: 12, background: G.gradient, color: "white", fontSize: 14, fontWeight: 800, fontFamily: G.font, border: "none" }}
+              >
+                أكمل تسوق
+              </button>
+              <button 
+                className="tap" 
+                onClick={onBack}
+                style={{ width: "100%", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.05)", color: G.text, fontSize: 14, fontWeight: 700, fontFamily: G.font, border: `1px solid ${G.cardBorder}` }}
+              >
+                العودة للرئيسية
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

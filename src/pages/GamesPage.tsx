@@ -36,11 +36,12 @@ const GAME_SERVICES = [
   { id: "valorant", name: "Valorant", icon: "🛡️", sub: "نقاط فالورانت", price: 150 },
 ];
 
-export default function GamesPage({ balance, setBalance, onBack }: any) {
+export default function GamesPage({ balance, setBalance, onBack, onAddToCart }: any) {
   const [sel, setSel] = useState<any>(null);
   const [id, setId] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [showAdded, setShowAdded] = useState(false);
 
   const handleBuy = () => {
     if (!sel || !id) return;
@@ -51,6 +52,14 @@ export default function GamesPage({ balance, setBalance, onBack }: any) {
       setLoading(false);
       setDone(true);
     }, 1500);
+  };
+
+  const handleAddToCartInternal = () => {
+    if (!sel || !id) return alert("يرجى اختيار اللعبة وإدخال الـ ID");
+    if (onAddToCart) {
+      onAddToCart({ ...sel, fields: { "ID اللاعب": id } });
+      setShowAdded(true);
+    }
   };
 
   if (done) return (
@@ -99,13 +108,58 @@ export default function GamesPage({ balance, setBalance, onBack }: any) {
             <span style={{ color: C.sub }}>التكلفة:</span>
             <span style={{ color: C.yellow, fontWeight: 900 }}>{sel.price} ج.م</span>
           </div>
-          <button 
-            onClick={handleBuy}
-            disabled={loading}
-            style={{ width: "100%", padding: 16, borderRadius: 12, background: C.blue, color: "white", fontWeight: 900, border: "none" }}
-          >
-            {loading ? "جاري الشحن..." : "اشحن الآن"}
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button 
+              onClick={handleBuy}
+              disabled={loading}
+              style={{ flex: 1, padding: 16, borderRadius: 12, background: C.blue, color: "white", fontWeight: 900, border: "none" }}
+            >
+              {loading ? "جاري الشحن..." : "اشحن الآن"}
+            </button>
+            <button 
+              onClick={handleAddToCartInternal}
+              style={{ width: 56, height: 56, borderRadius: 12, background: C.card, color: C.blue, border: `1px solid ${C.border}`, fontSize: 20 }}
+            >
+              🛒
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Added to Cart Modal */}
+      {showAdded && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 24, zIndex: 2000
+        }}>
+          <div className="fadeUp" style={{
+            background: C.card, border: `1px solid ${C.border}`,
+            borderRadius: 24, padding: 32, width: "100%", maxWidth: 350,
+            textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: C.text, marginBottom: 8 }}>تمت الإضافة للسلة</div>
+            <div style={{ fontSize: 13, color: C.sub, marginBottom: 24 }}>الخدمة الآن في سلة مشترياتك، يمكنك المتابعة أو إتمام الدفع</div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <button 
+                className="tap" 
+                onClick={() => setShowAdded(false)}
+                style={{ width: "100%", padding: 14, borderRadius: 12, background: C.blue, color: "white", fontSize: 14, fontWeight: 800, border: "none" }}
+              >
+                أكمل تسوق
+              </button>
+              <button 
+                className="tap" 
+                onClick={onBack}
+                style={{ width: "100%", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.05)", color: C.text, fontSize: 14, fontWeight: 700, border: `1px solid ${C.border}` }}
+              >
+                العودة للرئيسية
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

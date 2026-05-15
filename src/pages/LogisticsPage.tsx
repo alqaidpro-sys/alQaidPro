@@ -173,13 +173,14 @@ function FaqSection() {
 /* ══════════════════════════════════════════
    MAIN
 ══════════════════════════════════════════ */
-export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{}, onAddCart, initialSel }: any) {
+export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{}, onAddToCart, initialSel }: any) {
   const [sel,     setSel]     = useState<string | null>(initialSel || null);
   const [vals,    setVals]    = useState<any>({});
   const [price,   setPrice]   = useState("");
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState("");
+  const [showAdded, setShowAdded] = useState(false);
 
   const svc       = SERVICES.find(s => s.id === sel);
   const origPrice = parseFloat(price) || 0;
@@ -188,7 +189,16 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
   const allFilled = svc?.fields.every(f => vals[f.key]?.trim());
   const canBuy    = svc && allFilled && (svc.priceField ? origPrice > 0 && balance >= finalEgp : true);
 
-  const reset = () => { setSel(null); setVals({}); setPrice(""); setErr(""); setDone(false); };
+  const reset = () => { setSel(null); setVals({}); setPrice(""); setErr(""); setDone(false); setShowAdded(false); };
+
+  const handleAddToCartInternal = () => {
+    if (!allFilled) { setErr("يرجى ملء جميع الحقول"); return; }
+    if (svc?.priceField && origPrice <= 0) { setErr("يرجى إدخال السعر"); return; }
+    if (onAddToCart && svc) {
+      onAddToCart({...svc, total: finalEgp, fields: vals});
+      setShowAdded(true);
+    }
+  };
 
   const buy = () => {
     if (!allFilled)  { setErr("يرجى ملء جميع الحقول"); return; }
@@ -370,7 +380,7 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
                       </span>
                     : "⚡ شراء مباشر"}
                 </button>
-                <button className="tap" onClick={() => { if(onAddCart) onAddCart({...svc, total:finalEgp}); }}
+                <button className="tap" onClick={handleAddToCartInternal}
                   style={{ padding:"15px", borderRadius:13, fontSize:14, fontWeight:800, background:C.card, border:`1px solid ${C.border}`, color:C.blue, cursor:"pointer" }}>
                   🛒 إضافة للسلة
                 </button>
@@ -378,6 +388,43 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
 
               <SupportSection/>
               <FaqSection/>
+            </div>
+          )}
+
+          {/* Added to Cart Modal */}
+          {showAdded && (
+            <div style={{
+              position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+              background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: 24, zIndex: 2000
+            }}>
+              <div className="fadeUp" style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 24, padding: 32, width: "100%", maxWidth: 350,
+                textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: C.text, marginBottom: 8 }}>تمت الإضافة للسلة</div>
+                <div style={{ fontSize: 13, color: C.sub, marginBottom: 24 }}>الخدمة الآن في سلة مشترياتك، يمكنك المتابعة أو إتمام الدفع</div>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <button 
+                    className="tap" 
+                    onClick={() => setShowAdded(false)}
+                    style={{ width: "100%", padding: 14, borderRadius: 12, background: C.blue, color: "white", fontSize: 14, fontWeight: 800, border: "none" }}
+                  >
+                    أكمل تسوق
+                  </button>
+                  <button 
+                    className="tap" 
+                    onClick={onBack}
+                    style={{ width: "100%", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.05)", color: C.text, fontSize: 14, fontWeight: 700, border: `1px solid ${C.border}` }}
+                  >
+                    العودة للرئيسية
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

@@ -174,19 +174,29 @@ function FaqSection() {
 /* ══════════════════════════
    MAIN
 ══════════════════════════ */
-export default function AISubsPage({ balance=5000, setBalance, onBack=()=>{}, onAddCart, initialSel }: any) {
+export default function AISubsPage({ balance=5000, setBalance, onBack=()=>{}, onAddToCart, initialSel }: any) {
   const [sel,     setSel]     = useState<string | null>(initialSel || null);
   const [plan,    setPlan]    = useState<string | null>(null);
   const [email,   setEmail]   = useState("");
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState("");
+  const [showAdded, setShowAdded] = useState(false);
 
   const svc    = AI_SERVICES.find(s => s.id === sel);
   const selPlan= svc?.plans.find(p => p.n === plan);
   const canBuy = svc && selPlan && email.trim() && balance >= selPlan.egp;
 
-  const reset = () => { setSel(null); setPlan(null); setEmail(""); setErr(""); setDone(false); };
+  const reset = () => { setSel(null); setPlan(null); setEmail(""); setErr(""); setDone(false); setShowAdded(false); };
+
+  const addToCartInternal = () => {
+    if (!email.trim())  { setErr("يرجى إدخال "+svc?.emailLabel); return; }
+    if (!selPlan)       { setErr("يرجى اختيار مدة الاشتراك"); return; }
+    if (onAddToCart && svc && selPlan) {
+      onAddToCart({...svc, plan: selPlan, total: selPlan.egp, fields: { [svc.emailLabel]: email } });
+      setShowAdded(true);
+    }
+  };
 
   const buy = () => {
     if (!email.trim())  { setErr("يرجى إدخال "+svc?.emailLabel); return; }
@@ -393,7 +403,7 @@ export default function AISubsPage({ balance=5000, setBalance, onBack=()=>{}, on
                       </span>
                     : "⚡ شراء مباشر"}
                 </button>
-                <button className="tap" onClick={()=>{ if(onAddCart&&svc&&selPlan) onAddCart({...svc, plan:selPlan, total:selPlan.egp}); }}
+                <button className="tap" onClick={addToCartInternal}
                   style={{ padding:"15px", borderRadius:13, fontSize:14, fontWeight:800, background:C.card, border:`1px solid ${C.border}`, color:C.blue, cursor:"pointer" }}>
                   🛒 إضافة للسلة
                 </button>
@@ -401,6 +411,43 @@ export default function AISubsPage({ balance=5000, setBalance, onBack=()=>{}, on
 
               <SupportSection/>
               <FaqSection/>
+            </div>
+          )}
+
+          {/* Added to Cart Modal */}
+          {showAdded && (
+            <div style={{
+              position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+              background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: 24, zIndex: 2000
+            }}>
+              <div className="fadeUp" style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 24, padding: 32, width: "100%", maxWidth: 350,
+                textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: C.text, marginBottom: 8 }}>تمت الإضافة للسلة</div>
+                <div style={{ fontSize: 13, color: C.sub, marginBottom: 24 }}>الخدمة الآن في سلة مشترياتك، يمكنك المتابعة أو إتمام الدفع</div>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <button 
+                    className="tap" 
+                    onClick={() => setShowAdded(false)}
+                    style={{ width: "100%", padding: 14, borderRadius: 12, background: C.blue, color: "white", fontSize: 14, fontWeight: 800, border: "none" }}
+                  >
+                    أكمل تسوق
+                  </button>
+                  <button 
+                    className="tap" 
+                    onClick={onBack}
+                    style={{ width: "100%", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.05)", color: C.text, fontSize: 14, fontWeight: 700, border: `1px solid ${C.border}` }}
+                  >
+                    العودة للرئيسية
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
