@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account details and balance.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "balance": { "type": "number" },
+        "rank": { "type": "string", "enum": ["عادي", "مميز", "VIP"] },
+        "joinedAt": { "type": "string", "format": "date-time" },
+        "isAdmin": { "type": "boolean" }
+      },
+      "required": ["name", "email", "balance", "rank"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A service or top-up order.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "amount": { "type": "string" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "stage": { "type": "number" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" }
+      },
+      "required": ["name", "amount", "userId", "stage"]
+    },
+    "SupportTicket": {
+      "title": "Support Ticket",
+      "description": "User support request.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "replied", "closed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subject", "message", "status"]
+    },
+    "DepositRequest": {
+      "title": "Deposit Request",
+      "description": "User deposit request for balance top-up.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userName": { "type": "string" },
+        "amount": { "type": "number" },
+        "methodName": { "type": "string" },
+        "paymentDetails": { "type": "object" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "msg": { "type": "string" },
+        "type": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "msg"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles by UID."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "All service orders."
+    },
+    "/support_tickets/{ticketId}": {
+      "schema": "SupportTicket",
+      "description": "User support tickets."
+    },
+    "/deposit_requests/{requestId}": {
+      "schema": "DepositRequest",
+      "description": "User deposit requests."
+    },
+    "/notifications/{notifId}": {
+      "schema": "Notification",
+      "description": "User notifications."
+    }
+  }
+}

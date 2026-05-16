@@ -101,8 +101,8 @@ export function ServicesScreen({ setTab, cartCount = 0 }: any) {
 
   const renderGroup = (group: any, idx: number) => {
     const filteredItems = group.items.filter((s: any) => 
-      s.name.toLowerCase().includes(search.toLowerCase()) || 
-      s.sub.toLowerCase().includes(search.toLowerCase())
+      (s.name?.toLowerCase()?.includes(search.toLowerCase())) || 
+      (s.sub?.toLowerCase()?.includes(search.toLowerCase()))
     );
 
     if (filteredItems.length === 0) return null;
@@ -179,7 +179,7 @@ export function ServicesScreen({ setTab, cartCount = 0 }: any) {
               </div>
               <div style={{ 
                 fontSize: gridCols === 4 ? 8 : 9, 
-                color: s.svcId?.includes("ai") || s.sub.includes("%") ? "#fbbf24" : s.color || C.sub, 
+                color: (s.svcId?.toLowerCase()?.includes("ai") || s.sub?.includes("%")) ? "#fbbf24" : s.color || C.sub, 
                 fontWeight: 900, 
                 fontFamily: G.font,
                 opacity: 0.9 
@@ -301,7 +301,7 @@ export function ServicesScreen({ setTab, cartCount = 0 }: any) {
         {ALL_SERVICES_GROUPS.map((group, i) => renderGroup(group, i))}
       </div>
 
-      {search && ALL_SERVICES_GROUPS.every(g => g.items.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.sub.toLowerCase().includes(search.toLowerCase())).length === 0) && (
+      {search && ALL_SERVICES_GROUPS.every(g => g.items.filter(s => (s.name?.toLowerCase()?.includes(search.toLowerCase()) || s.sub?.toLowerCase()?.includes(search.toLowerCase()))).length === 0) && (
         <div style={{ textAlign: "center", padding: "60px 20px", opacity: 0.4 }} dir="rtl">
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
           <div style={{ fontSize: 14, color: G.text, fontFamily: G.font, textAlign: "center" }}>لا توجد نتائج بحث...</div>

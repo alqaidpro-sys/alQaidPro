@@ -1,5 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { G } from "../data";
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  onAuthStateChanged,
+  User as FirebaseUser 
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db } from "../lib/firebase";
 
 const T = {
   bg: "#050810",
@@ -89,10 +97,11 @@ const COUNTRIES = [
   "أخرى 🌍",
 ];
 
-export function AuthScreen({ onLogin }: { onLogin: () => void }) {
+export function AuthScreen({ onLogin }: { onLogin: (email: string) => void }) {
   const [view, setView] = useState<"login" | "register">("login");
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   // Register Fields
   const [name, setName] = useState("");
@@ -108,14 +117,74 @@ export function AuthScreen({ onLogin }: { onLogin: () => void }) {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    if (!loginEmail || !loginPass) return setErrorMsg("برجاء إدخال البريد الإلكتروني وكلمة المرور");
     setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 1500);
+    setErrorMsg("");
+    try {
+      await signInWithEmailAndPassword(auth, loginEmail, loginPass);
+      onLogin(loginEmail);
+    } catch (error: any) {
+      console.error(error);
+      setErrorMsg("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
+    if (loading) return;
+    if (!agree) return setErrorMsg("يجب الموافقة على الشروط والأحكام أولاً");
+    if (pass !== confirm) return setErrorMsg("كلمات المرور غير متطابقة");
+    if (pass.length < 6) return setErrorMsg("يجب أن تكون كلمة المرور 6 أحرف على الأقل");
+    if (pin.length !== 4) return setErrorMsg("يجب إدخال PIN أمان مكون من 4 أرقام");
+    if (!email || !pass || !name) return setErrorMsg("برجاء إكمال جميع البيانات الأساسية");
+    
     setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 1500);
+    setErrorMsg("");
+    try {
+      console.log("Starting Firebase Auth registration...");
+      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+      const user = userCred.user;
+      
+      console.log("Auth success, creating Firestore profile...");
+      // Create user document
+      await setDoc(doc(db, "users", user.uid), {
+        name,
+        email,
+        phone,
+        country,
+        pin, // Saving security pin
+        balance: 0,
+        rank: "عادي",
+        role: email === "alqaidpro@gmail.com" ? "admin" : "user", // Set default admin role properly
+        joinedAt: new Date().toISOString()
+      });
+      
+      console.log("Registration complete!");
+      onLogin(email);
+    } catch (error: any) {
+      console.error("Registration Error Detail:", error);
+      let msg = "حدث خطأ غير متوقع، يرجى المحاولة لاحقاً";
+      
+      if (error.code === "auth/email-already-in-use") {
+        msg = "هذا البريد الإلكتروني مسجل بالفعل لمستخدم آخر";
+      } else if (error.code === "auth/invalid-email") {
+        msg = "صيغة البريد الإلكتروني غير صحيحة";
+      } else if (error.code === "auth/weak-password") {
+        msg = "كلمة المرور ضعيفة جداً، يرجى اختيار كلمة أقوى";
+      } else if (error.message && error.message.includes("permission-denied")) {
+        msg = "خطأ في صلاحيات الوصول لقاعدة البيانات، تواصل مع الإدارة";
+      } else if (error.message) {
+        msg = `خطأ: ${error.message}`;
+      }
+      
+      setErrorMsg(msg);
+      // For serious errors, alert as well so it's not missed
+      alert(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (view === "login") {
@@ -132,6 +201,11 @@ export function AuthScreen({ onLogin }: { onLogin: () => void }) {
         </div>
 
         <div className="fadeUp" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {errorMsg && (
+            <div style={{ padding: 12, borderRadius: 12, background: "rgba(248,113,113,0.1)", border: `1px solid ${T.red}`, color: T.red, fontSize: 12, textAlign: "center", fontFamily: T.font }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
           <Field label="البريد الإلكتروني" value={loginEmail} onChange={(e: any) => setLoginEmail(e.target.value)} placeholder="name@example.com" type="email" />
           <Field label="كلمة المرور" value={loginPass} onChange={(e: any) => setLoginPass(e.target.value)} placeholder="••••••••" type="password" />
           
@@ -186,6 +260,11 @@ export function AuthScreen({ onLogin }: { onLogin: () => void }) {
       </div>
 
       <div className="fadeUp" key={step}>
+        {errorMsg && (
+          <div style={{ padding: 12, borderRadius: 12, background: "rgba(248,113,113,0.1)", border: `1px solid ${T.red}`, color: T.red, fontSize: 12, textAlign: "center", fontFamily: T.font, marginBottom: 16 }}>
+            ⚠️ {errorMsg}
+          </div>
+        )}
         {step === 1 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Field label="الاسم الكامل" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="محمد أحمد" icon="👤" />
@@ -240,9 +319,9 @@ export function AuthScreen({ onLogin }: { onLogin: () => void }) {
 
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setStep(2)} className="tap" style={{ flex: 1, padding: 14, borderRadius: 14, border: `1px solid ${T.border}`, color: T.sub, background: "transparent" }}>رجوع</button>
-              <button onClick={handleRegister} className="tap" disabled={!agree || loading} style={{
+              <button onClick={handleRegister} className="tap" style={{
                 flex: 2, padding: 14, borderRadius: 14, background: agree ? T.green : T.border, color: "#fff",
-                fontWeight: 900, border: "none", opacity: (agree && !loading) ? 1 : 0.5
+                fontWeight: 900, border: "none", opacity: loading ? 0.5 : 1
               }}>
                 {loading ? "جاري الحفظ..." : "إنشاء الحساب 🚀"}
               </button>

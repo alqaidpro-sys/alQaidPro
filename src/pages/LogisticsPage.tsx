@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { processPurchase } from "../services/purchaseService";
 
 const C = {
   bg:      "#050810",
@@ -200,16 +201,35 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
     }
   };
 
-  const buy = () => {
+  const buy = async () => {
     if (!allFilled)  { setErr("يرجى ملء جميع الحقول"); return; }
     if (svc?.priceField && origPrice <= 0) { setErr("يرجى إدخال السعر الحقيقي للمنتج"); return; }
     if (svc?.priceField && balance < finalEgp) { setErr("رصيدك غير كافٍ — اشحن المحفظة أولاً"); return; }
-    setErr(""); setLoading(true);
-    setTimeout(() => {
-      if (setBalance && svc?.priceField) setBalance((b: number) => b - finalEgp);
-      setLoading(false);
+    
+    setErr(""); 
+    setLoading(true);
+    
+    try {
+      if (!svc) return;
+      await processPurchase({
+        serviceId: svc.id,
+        serviceName: svc.name,
+        icon: svc.icon,
+        color: svc.color,
+        amount: svc.priceField ? finalEgp : 0,
+        details: {
+          ...vals,
+          originalPrice: origPrice,
+          discount: svc.discount,
+          type: "LOGISTICS"
+        }
+      });
       setDone(true);
-    }, 1800);
+    } catch (err: any) {
+      setErr(err.message || "حدث خطأ أثناء إتمام الطلب");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* SUCCESS */

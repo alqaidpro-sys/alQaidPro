@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { processPurchase } from "../services/purchaseService";
 
 const C = {
   bg:      "#050810",
@@ -103,16 +104,37 @@ export default function BinancePage({balance=5000,setBalance,onBack,onAddToCart}
   const egp=+(num*RATE).toFixed(2);
   const canBuy=balance>=egp&&egp>0&&address.trim().length>10;
 
-  const handleBuy=()=>{
-    if(!address.trim()){setError("يرجى إدخال عنوان المحفظة");return;}
-    if(address.trim().length<10){setError("عنوان المحفظة غير صحيح");return;}
-    if(num<=0){setError("يرجى إدخال مبلغ صحيح");return;}
-    if(!canBuy){setError("رصيدك غير كافٍ — اشحن المحفظة أولاً");return;}
-    setError("");setLoading(true);
-    setTimeout(()=>{
-      if(setBalance) setBalance((b: number)=>b-egp);
-      setLoading(false);setShowModal(true);
-    },1800);
+  const handleBuy = async () => {
+    if (!address.trim()) { setError("يرجى إدخال عنوان المحفظة"); return; }
+    if (address.trim().length < 10) { setError("عنوان المحفظة غير صحيح"); return; }
+    if (num <= 0) { setError("يرجى إدخال مبلغ صحيح"); return; }
+    if (balance < egp) { setError("رصيدك غير كافٍ — اشحن المحفظة أولاً"); return; }
+    
+    setError(""); 
+    setLoading(true);
+    
+    try {
+      await processPurchase({
+        serviceId: "binance_" + coin.toLowerCase(),
+        serviceName: `شحن ${coin} Binance`,
+        icon: "₿",
+        color: C.yellow,
+        amount: egp,
+        details: {
+          coin,
+          network,
+          address,
+          cryptoAmount: num,
+          rate: RATE,
+          type: "CRYPTO_TRANSFER"
+        }
+      });
+      setShowModal(true);
+    } catch (err: any) {
+      setError(err.message || "حدث خطأ أثناء إتمام الطلب");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddToCartInternal = () => {

@@ -16,15 +16,25 @@ interface ServiceItem {
   hasDuration?: boolean;
 }
 
-export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: (t: string, svcId?: string | null) => void, balance?: number, cartCount?: number }) {
+export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, transactions = [], notifications = [] }: { setTab: (t: string, svcId?: string | null) => void, balance?: number, cartCount?: number, userData?: any, transactions?: any[], notifications?: any[] }) {
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
 
-  const SAMPLE_NOTIFS = [
-    { id: 1, title: "تم تنفيذ طلبك بنجاح ✅", desc: "تم شحن اشتراك ChatGPT Plus الخاص بك، استمتع بالخدمة الآن.", time: "منذ 15 دقيقة", icon: "🤖", color: "#10b981" },
-    { id: 2, title: "عروض نهاية الأسبوع 🔥", desc: "خصومات تصل إلى 90% على جميع خدمات الألعاب والترفيه لفترة محدودة.", time: "منذ ساعتين", icon: "⚡", color: "#f59e0b" },
-    { id: 3, title: "تحديث جديد للنشرة 🗞️", desc: "تم إضافة طرق دفع جديدة تشمل إنستا باي وفودافون كاش.", time: "أمس، 10:00 ص", icon: "🏦", color: "#3b82f6" },
-  ];
+  const displayName = userData?.name || "المستخدم";
+  const displayRank = userData?.rank === "vip" ? "عضو VIP ✨" : userData?.rank === "pro" ? "عضو مميز ⚡" : "عضو عادي";
+
+  const totalIn = transactions.filter(t => t.type === "TOPUP" && t.status === "completed").reduce((a, t) => a + Number(String(t.amount || "0").replace(/\D/g, "") || 0), 0);
+  const totalOut = transactions.filter(t => t.type !== "TOPUP" && t.status === "completed").reduce((a, t) => a + Number(String(t.amount || "0").replace(/\D/g, "") || 0), 0);
+  const points = Math.floor(totalOut / 10);
+
+  const recentActivity = transactions.slice(0, 3).map((t, i) => ({
+    id: t.id,
+    title: t.name,
+    price: (t.type === "TOPUP" ? "+ " : "- ") + t.amount,
+    time: t.date || "اليوم",
+    icon: t.icon || "📦",
+    color: t.color || "#3b82f6"
+  }));
 
   return (
     <div style={{ paddingBottom: 110 }}>
@@ -40,7 +50,7 @@ export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: 
           }}>👤</div>
           <div>
             <div style={{ fontSize: 11, color: G.sub, fontFamily: G.font }}>أهلاً بك 👋</div>
-            <div style={{ fontSize: 15, fontWeight: 900, color: G.text, fontFamily: G.font }}>القائد المتميز</div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: G.text, fontFamily: G.font }}>{displayName}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -89,16 +99,16 @@ export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: 
             </div>
             <div style={{ textAlign: "left" }}>
               <div style={{ fontSize: 9, color: G.sub, marginBottom: 3, fontFamily: G.font }}>نقاط المكافآت</div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#FBBF24" }}>⭐ 450</div>
-              <div style={{ fontSize: 8, color: G.sub, fontFamily: G.font }}>= £45 خصم</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#FBBF24" }}>⭐ {points.toLocaleString()}</div>
+              <div style={{ fontSize: 8, color: G.sub, fontFamily: G.font }}>= £{(points / 10).toFixed(0)} خصم</div>
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, background: "rgba(0,0,0,.25)", borderRadius: 14, padding: "12px 10px", marginBottom: 16 }}>
             {[
-              { l: "إجمالي الشحن", v: "£1,700", i: "⬆️" },
-              { l: "إجمالي المصروف", v: "£510", i: "⬇️" },
-              { l: "قيمة النقاط", v: "£45", i: "💎" }
+              { l: "إجمالي الشحن", v: `£${totalIn.toLocaleString()}`, i: "⬆️" },
+              { l: "إجمالي المصروف", v: `£${totalOut.toLocaleString()}`, i: "⬇️" },
+              { l: "قيمة النقاط", v: `£${(points / 10).toFixed(0)}`, i: "💎" }
             ].map((st, i) => (
               <div key={i} style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 14, marginBottom: 2 }}>{st.i}</div>
@@ -206,12 +216,8 @@ export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: 
           <div style={{ fontSize: 14, fontWeight: 900, color: G.text, fontFamily: G.font }}>آخر النشاطات</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[
-            { id: 1, title: "شحن رصيد محفظة", price: "+ £2,500", time: "منذ ساعتين", icon: "💰", color: "#10b981" },
-            { id: 2, title: "شراء اشتراك ChatGPT Plus", price: "- £100", time: "أمس، 09:30 م", icon: "🤖", color: "#3b82f6" },
-            { id: 3, title: "مشتريات أمازون (باقة 75%)", price: "- £450", time: "14 مايو 2024", icon: "📦", color: "#f59e0b" },
-          ].map((item, idx) => (
-            <div key={item.id} className="fadeUp" style={{ 
+          {recentActivity.map((item, idx) => (
+            <div key={item.id || idx} className="fadeUp" style={{ 
               background: "#0f172a", border: "1px solid rgba(255,255,255,0.03)", borderRadius: 14, padding: "10px 14px",
               display: "flex", alignItems: "center", justifyContent: "space-between",
               animationDelay: `${0.3 + idx * 0.1}s`
@@ -265,22 +271,22 @@ export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: 
                   display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 
                 }}>👤</div>
                 <div>
-                  <div style={{ fontSize: 17, fontWeight: 900, color: G.text, fontFamily: G.font }}>القائد المتميز</div>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: G.text, fontFamily: G.font }}>{displayName}</div>
                   <div style={{ 
                     fontSize: 10, color: G.blue, background: "rgba(59,130,246,0.12)", 
                     padding: "3px 10px", borderRadius: 20, display: "inline-block", 
                     marginTop: 4, fontWeight: 800, fontFamily: G.font 
-                  }}>عضو مميز ✨</div>
+                  }}>{displayRank}</div>
                 </div>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {[
-                  { label: "البريد الإلكتروني", val: "loerd04@gmail.com", icon: "✉️" },
-                  { label: "رقم الهاتف", val: "01001900618", icon: "📱" },
-                  { label: "الدولة", val: "مصر 🇪🇬", icon: "🌍" },
-                  { label: "الرصيد المتاح", val: `${balance.toLocaleString()} جنيه`, icon: "💰", color: "#10b981" },
-                  { label: "تاريخ الانضمام", val: "12 مايو 2024", icon: "📅" },
+                  { label: "البريد الإلكتروني", val: userData?.email || "غير معروف", icon: "✉️" },
+                  { label: "رقم الهاتف", val: userData?.phone || "غير مسجل", icon: "📱" },
+                  { label: "الدولة", val: userData?.country ? `${userData.country} ${userData.country === "مصر" ? "🇪🇬" : ""}` : "لم تحدد", icon: "🌍" },
+                  { label: "الرصيد المتاح", val: `${balance.toLocaleString()} ج.م`, icon: "💰", color: "#10b981" },
+                  { label: "الرتبة", val: displayRank, icon: "👑" },
                 ].map((item, i) => (
                   <div key={i} style={{ 
                     display: "flex", justifyContent: "space-between", alignItems: "center", 
@@ -331,27 +337,36 @@ export function HomeScreen({ setTab, balance = 5000, cartCount = 0 }: { setTab: 
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: "60vh", overflowY: "auto" }}>
-              {SAMPLE_NOTIFS.map((notif, idx) => (
-                <div key={notif.id} className="fadeUp" style={{ 
-                  background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", 
-                  padding: 16, borderRadius: 20, display: "flex", gap: 14, animationDelay: `${idx * 0.1}s`
-                }}>
-                  <div style={{ 
-                    width: 44, height: 44, borderRadius: 14, 
-                    background: `${notif.color}15`, display: "flex", 
-                    alignItems: "center", justifyContent: "center", fontSize: 20, shrink: 0
-                  }}>{notif.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: G.text, fontFamily: G.font, marginBottom: 4, textAlign: "right" }}>{notif.title}</div>
-                    <div style={{ fontSize: 11, color: G.sub, fontFamily: G.font, lineHeight: 1.5, marginBottom: 8, textAlign: "right" }}>{notif.desc}</div>
-                    <div style={{ fontSize: 9, color: G.blue, fontWeight: 700, fontFamily: G.font, textAlign: "right" }}>{notif.time}</div>
-                  </div>
+              {notifications.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px 0", opacity: 0.5 }}>
+                  <div style={{ fontSize: 40, marginBottom: 15 }}>🔔</div>
+                  <div style={{ fontSize: 13, color: G.sub, fontFamily: G.font }}>لا توجد إشعارات حالياً</div>
                 </div>
-              ))}
+              ) : (
+                notifications.map((notif, idx) => (
+                  <div key={notif.id} className="fadeUp" style={{ 
+                    background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", 
+                    padding: 16, borderRadius: 20, display: "flex", gap: 14, animationDelay: `${idx * 0.1}s`
+                  }}>
+                    <div style={{ 
+                      width: 44, height: 44, borderRadius: 14, 
+                      background: `${notif.color || G.blue}15`, display: "flex", 
+                      alignItems: "center", justifyContent: "center", fontSize: 20, shrink: 0
+                    }}>{notif.icon || "🔔"}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: G.text, fontFamily: G.font, marginBottom: 4, textAlign: "right" }}>{notif.title}</div>
+                      <div style={{ fontSize: 11, color: G.sub, fontFamily: G.font, lineHeight: 1.5, marginBottom: 8, textAlign: "right" }}>{notif.msg || notif.desc}</div>
+                      <div style={{ fontSize: 9, color: G.blue, fontWeight: 700, fontFamily: G.font, textAlign: "right" }}>{notif.time || "الآن"}</div>
+                    </div>
+                  </div>
+                ))
+              )}
               
-              <div style={{ textAlign: "center", padding: "20px 0", opacity: 0.5 }}>
-                <div style={{ fontSize: 11, color: G.sub, fontFamily: G.font }}>لقد وصلت لنهاية الإشعارات ✨</div>
-              </div>
+              {notifications.length > 0 && (
+                <div style={{ textAlign: "center", padding: "20px 0", opacity: 0.5 }}>
+                  <div style={{ fontSize: 11, color: G.sub, fontFamily: G.font }}>لقد وصلت لنهاية الإشعارات ✨</div>
+                </div>
+              )}
             </div>
 
             <button onClick={() => setShowNotifs(false)} className="tap" style={{ 

@@ -1,5 +1,7 @@
 import { G } from "../data";
 import { motion } from "motion/react";
+import { auth } from "../lib/firebase";
+import { processCartCheckout } from "../services/purchaseService";
 
 interface Props {
   cart: any[];
@@ -9,18 +11,23 @@ interface Props {
   balance: number;
   setBalance: (b: number) => void;
   setTab: (t: string) => void;
+  userData: any;
 }
 
-export const CartScreen = ({ cart, onRemove, onClear, onBack, balance, setBalance, setTab }: Props) => {
+export const CartScreen = ({ cart, onRemove, onClear, onBack, balance, setBalance, setTab, userData }: Props) => {
   const total = cart.reduce((sum, item) => sum + (item.price || item.total || 0), 0);
 
-  const handleCheckout = () => {
-    if (balance < total) return;
+  const handleCheckout = async () => {
+    if (!auth.currentUser || balance < total || cart.length === 0) return;
     
-    setBalance(balance - total);
-    onClear();
-    alert(`تم إتمام الطلب بنجاح! \nتم خصم ${total} ج.م من رصيدك.`);
-    setTab("history"); 
+    try {
+      await processCartCheckout(cart, total);
+      onClear();
+      alert(`تم إتمام الطلب بنجاح! \nتم خصم ${total} ج.م من رصيدك.`);
+      setTab("history"); 
+    } catch (err: any) {
+      alert(err.message || "حدث خطأ أثناء إتمام الطلب من السلة");
+    }
   };
 
   return (

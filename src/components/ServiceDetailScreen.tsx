@@ -2,8 +2,18 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { DURATIONS, G, NETWORKS, TOPUP_AMOUNTS } from "../data";
 import { BalanceBadge, InfoBanner, PrimaryBtn } from "./Shared";
+import { auth } from "../lib/firebase";
+import { processPurchase } from "../services/purchaseService";
 
-export function ServiceDetailScreen({ service, onBack, onAddToCart }: { service: any, onBack: () => void, onAddToCart: (item: any) => void }) {
+interface Props {
+  service: any;
+  onBack: () => void;
+  onAddToCart: (item: any) => void;
+  balance: number;
+  userData: any;
+}
+
+export function ServiceDetailScreen({ service, onBack, onAddToCart, balance, userData }: Props) {
   const [vals, setVals] = useState<any>({});
   const [duration, setDuration] = useState(DURATIONS?.[0] || "");
   const [showDrop, setShowDrop] = useState(false);
@@ -15,17 +25,29 @@ export function ServiceDetailScreen({ service, onBack, onAddToCart }: { service:
   const [errors, setErrors] = useState<any>({});
   const [showToast, setShowToast] = useState(false);
 
+  const price = 240; // Fixed price for sample, should ideally come from service data
+
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!auth.currentUser) {
+      alert("يرجى تسجيل الدخول أولاً");
+      return;
+    }
+
+    if (balance < price) {
+      alert(`⚠️ رصيدك الحالي (${balance} ج.م) غير كافٍ لإتمام هذا الطلب. سعر الخدمة ${price} ج.م.`);
+      return;
+    }
+
     const newErrors: any = {};
     
     // Check fields for email validation
-    if (!service.isTopup) {
+    if (!service.isTopup && service.fields) {
       service.fields.forEach((f: string) => {
-        if (f.includes("بريد")) {
+        if (f && typeof f === "string" && f.includes("بريد")) {
           const emailVal = vals[f] || "";
           if (!emailVal) {
             newErrors[f] = "يرجى إدخال البريد الإلكتروني";
@@ -43,14 +65,36 @@ export function ServiceDetailScreen({ service, onBack, onAddToCart }: { service:
 
     setErrors({});
     setLoading(true);
-    setTimeout(() => { setLoading(false); setSubmitted(true); }, 1500);
+
+    try {
+      await processPurchase({
+        serviceId: service.id,
+        serviceName: service.name,
+        icon: service.icon,
+        color: service.color,
+        amount: price,
+        details: {
+          ...vals,
+          duration: service.hasDuration ? duration : null,
+          network: service.isTopup ? network : null,
+          topupAmount: service.isTopup ? topupAmt : null,
+          userName: userData?.name || "مستخدم",
+        }
+      });
+
+      setSubmitted(true);
+    } catch (err: any) {
+      alert(err.message || "حدث خطأ أثناء إتمام الطلب");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddToCartInternal = () => {
     const newErrors: any = {};
     if (!service.isTopup && service.fields) {
       service.fields.forEach((f: string) => {
-        if (f.includes("بريد")) {
+        if (f && typeof f === "string" && f.includes("بريد")) {
           const emailVal = vals[f] || "";
           if (!emailVal || !validateEmail(emailVal)) newErrors[f] = "خطأ في البريد";
         }
@@ -58,25 +102,26 @@ export function ServiceDetailScreen({ service, onBack, onAddToCart }: { service:
     }
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
     
-    onAddToCart({ service, vals, price: 240 });
+    onAddToCart({ service, vals, price });
     setShowToast(true);
   };
 
   if (submitted) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 32 }}>
-        <div style={{ fontSize: 72, marginBottom: 24, animation: "pulse 1s ease" }}>✅</div>
-        <h2 style={{ fontSize: 22, fontWeight: 900, color: G.text, fontFamily: G.font, marginBottom: 10, textAlign: "center" }}>تم إرسال الطلب!</h2>
+        <div style={{ fontSize: 72, marginBottom: 24, animation: "bounce 2s infinite" }}>✅</div>
+        <h2 style={{ fontSize: 22, fontWeight: 900, color: G.text, fontFamily: G.font, marginBottom: 10, textAlign: "center" }}>تمت العملية بنجاح!</h2>
         <p style={{ fontSize: 14, color: G.sub, fontFamily: G.font, textAlign: "center", lineHeight: 1.7, marginBottom: 32 }}>
-          سيتم مراجعة طلبك وتنفيذه خلال 15-30 دقيقة. ستصلك إشعار فور الانتهاء.
+          تم استلام طلبك ({service.name}) بنجاح. سيتم البدء في التنفيذ فوراً وموافيك بالنتائج عبر الإشعارات خلال 15-30 دقيقة.
         </p>
-        <PrimaryBtn label="العودة للخدمات" onClick={onBack} />
+        <PrimaryBtn label="العودة للرئيسية" onClick={onBack} />
       </div>
     );
   }
 
   return (
     <div style={{ paddingBottom: 110 }}>
+      {/* Header */}
       <div style={{ padding: "52px 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
         <button className="btn" onClick={onBack} style={{ width: 38, height: 38, borderRadius: 12, background: G.card, border: `1px solid ${G.cardBorder}`, color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
@@ -95,7 +140,7 @@ export function ServiceDetailScreen({ service, onBack, onAddToCart }: { service:
 
       <div style={{ padding: "20px 20px 0", display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Balance */}
-        <BalanceBadge compact />
+        <BalanceBadge compact balance={balance} />
 
         {/* Info banner */}
         <InfoBanner icon={service.icon} title={service.name} text={service.desc} color={service.color} />
@@ -201,8 +246,8 @@ export function ServiceDetailScreen({ service, onBack, onAddToCart }: { service:
                   setVals({ ...vals, [f]: e.target.value });
                   if (errors[f]) setErrors({ ...errors, [f]: null });
                 }}
-                  placeholder={f.includes("رابط") ? "https://..." : f.includes("بريد") ? "name@example.com" : f.includes("هاتف") ? "01XXXXXXXXX" : ""}
-                  dir={f.includes("رابط") || f.includes("بريد") ? "ltr" : "rtl"}
+                  placeholder={f?.includes("رابط") ? "https://..." : f?.includes("بريد") ? "name@example.com" : f?.includes("هاتف") ? "01XXXXXXXXX" : ""}
+                  dir={f?.includes("رابط") || f?.includes("بريد") ? "ltr" : "rtl"}
                   style={{ 
                     width: "100%", background: "rgba(0,0,0,0.3)", 
                     border: `1px solid ${errors[f] ? "#ef4444" : G.cardBorder}`, 

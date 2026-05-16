@@ -29,8 +29,8 @@
 .marquee-ltr {
   display: inline-block;
   white-space: nowrap;
-  animation: marqueeScroll 500s linear infinite;
-  animation-delay: -250s; /* Adjusted for new duration */
+  animation: marqueeScroll 80s linear infinite;
+  padding-left: 100%;
 }
 
 @keyframes fadeUp {

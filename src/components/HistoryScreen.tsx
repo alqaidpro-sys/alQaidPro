@@ -17,7 +17,7 @@ const SAMPLE_TRANSACTIONS = [
   { id: "TX-11029", name: "مشتريات Temu Logistics", date: "منذ يومين", amount: "£8,400", icon: "🛍️", color: "#f97316", type: "TOPUP", status: "review", stage: 0 },
 ];
 
-export function HistoryScreen({ onBack }: { onBack: () => void }) {
+export function HistoryScreen({ onBack, transactions = [] }: { onBack: () => void, transactions?: any[] }) {
   const [filter, setFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
@@ -29,7 +29,7 @@ export function HistoryScreen({ onBack }: { onBack: () => void }) {
     { id: "TOPUP", label: "شحن" },
   ];
 
-  const shown = filter === "all" ? SAMPLE_TRANSACTIONS : SAMPLE_TRANSACTIONS.filter(t => t.type === filter);
+  const shown = filter === "all" ? transactions : transactions.filter(t => t.type === filter);
 
   return (
     <div style={{ paddingBottom: 110 }}>
@@ -77,20 +77,20 @@ export function HistoryScreen({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
               <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 16, fontWeight: 900, color: G.text, fontFamily: G.font, direction: "ltr" }}>
-                  {tx.amount}
+                <div style={{ fontSize: 16, fontWeight: 900, color: tx.type === "TOPUP" ? "#10B981" : G.text, fontFamily: G.font, direction: "ltr" }}>
+                  {tx.type === "TOPUP" ? "+" : ""}{tx.amount}
                 </div>
                 <div style={{ 
                   fontSize: 10, 
-                  color: STAGES[tx.stage].color, 
+                  color: tx.status === "rejected" ? "#EF4444" : STAGES[tx.stage || 0].color, 
                   marginTop: 4, 
                   fontFamily: G.font, 
                   fontWeight: 800,
-                  background: `${STAGES[tx.stage].color}15`,
+                  background: tx.status === "rejected" ? "rgba(239,68,68,0.15)" : `${STAGES[tx.stage || 0].color}15`,
                   padding: "2px 8px",
                   borderRadius: 6
                 }}>
-                  {STAGES[tx.stage].label}
+                  {tx.status === "rejected" ? "مرفوض ❌" : STAGES[tx.stage || 0].label}
                 </div>
               </div>
             </div>
@@ -100,7 +100,7 @@ export function HistoryScreen({ onBack }: { onBack: () => void }) {
               paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.03)" 
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div className="pulse" style={{ width: 8, height: 8, borderRadius: "50%", background: STAGES[tx.stage].color }} />
+                <div className="pulse" style={{ width: 8, height: 8, borderRadius: "50%", background: STAGES[tx.stage || 0].color }} />
                 <span style={{ fontSize: 10, color: G.sub, fontFamily: G.font }}>اضغط للتفاصيل والتتبع</span>
               </div>
               <div style={{ fontSize: 10, color: G.sub, fontFamily: G.font, background: "rgba(255,255,255,0.03)", padding: "4px 10px", borderRadius: 8 }}>

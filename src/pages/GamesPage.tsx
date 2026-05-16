@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { processPurchase } from "../services/purchaseService";
 
 const C = {
   bg:      "#050810",
@@ -43,15 +44,30 @@ export default function GamesPage({ balance, setBalance, onBack, onAddToCart }: 
   const [done, setDone] = useState(false);
   const [showAdded, setShowAdded] = useState(false);
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
     if (!sel || !id) return;
-    if (balance < sel.price) return alert("الرصيد غير كافٍ");
+    if (balance < sel.price) return alert("الرصيد غير كافٍ — اشحن المحفظة أولاً");
+    
     setLoading(true);
-    setTimeout(() => {
-      setBalance((b: number) => b - sel.price);
-      setLoading(false);
+    try {
+      await processPurchase({
+        serviceId: sel.id,
+        serviceName: sel.name,
+        icon: sel.icon,
+        color: sel.color || "#3b82f6",
+        amount: sel.price,
+        details: {
+          playerId: id,
+          subCategory: sel.sub,
+          type: "GAME_TOPUP"
+        }
+      });
       setDone(true);
-    }, 1500);
+    } catch (err: any) {
+      alert(err.message || "حدث خطأ أثناء إتمام الطلب");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddToCartInternal = () => {

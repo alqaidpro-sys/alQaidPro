@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function getUserData(userId) { return get(/databases/$(database)/documents/users/$(userId)).data; }
+    function isAdmin() { return isSignedIn() && (getUserData(request.auth.uid).role == "admin" || request.auth.token.email == "alqaidpro@gmail.com"); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Validation Blueprints
+    function isValidOrder(data) {
+      return data.keys().hasAll(['name', 'amount', 'userId', 'status']) &&
+             data.name is string &&
+             data.userId is string &&
+             data.status in ['processing', 'active', 'completed', 'rejected'];
+    }
+
+    function isValidSupportTicket(data) {
+      return data.keys().hasAll(['userId', 'subject', 'message', 'status']) &&
+             data.userId is string &&
+             data.subject is string && data.subject.size() > 0 &&
+             data.message is string && data.message.size() > 0 &&
+             data.status in ['open', 'replied', 'closed'];
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'title', 'msg']) &&
+             data.userId is string &&
+             data.title is string &&
+             data.msg is string;
+    }
+
+    function isValidDepositRequest(data) {
+      return data.keys().hasAll(['userId', 'amount', 'status']) &&
+             data.userId is string &&
+             data.amount is number &&
+             data.status in ['pending', 'approved', 'rejected'];
+    }
+
+    // Collection Rules
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin() || isOwner(userId);
+      allow create: if isOwner(userId); 
+      allow update: if isAdmin() || 
+                    (isOwner(userId) && 
+                     incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'country', 'province', 'city', 'address', 'phone', 'balance', 'updatedAt']) &&
+                     incoming().balance <= existing().balance); // Only allow equal or decrement
+    }
+
+    match /system/connection_test {
+      allow read: if true;
+    }
+
+    match /orders/{orderId} {
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidOrder(incoming());
+      allow update: if isAdmin();
+    }
+
+    match /deposit_requests/{requestId} {
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidDepositRequest(incoming()) && incoming().status == "pending";
+      allow update: if isAdmin();
+    }
+
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isAdmin() || (isSignedIn() && incoming().userId == request.auth.uid);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /support_tickets/{ticketId} {
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidSupportTicket(incoming());
+      allow update: if isAdmin();
+    }
+  }
+}

@@ -1,5 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AdminPanel } from "./AdminPanel";
 import { G } from "../data";
+import { signOut } from "firebase/auth";
+import { auth, db } from "../lib/firebase";
+import { doc, updateDoc } from "firebase/firestore";
 
 const T = {
   bg: "var(--sett-bg)",
@@ -21,21 +25,69 @@ const T = {
   font: "Cairo, sans-serif"
 };
 
-export function SettingsScreen({ onBack }: { onBack: () => void }) {
+export function SettingsScreen({ onBack, userEmail, orders = [], onUpdateOrder, users = [], onUpdateUser, userData, tickets = [], onUpdateTicket, depositRequests = [] }: { 
+  onBack: () => void, 
+  userEmail?: string, 
+  orders?: any[], 
+  onUpdateOrder?: (id: string, updates: any) => void,
+  users?: any[],
+  onUpdateUser?: (id: string, updates: any) => void,
+  userData?: any,
+  tickets?: any[],
+  onUpdateTicket?: (id: string, updates: any) => void,
+  depositRequests?: any[]
+}) {
   const [masterNotif, setMasterNotif] = useState(true);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [sound, setSound] = useState("افتراضي");
   const [isDark, setIsDark] = useState(true);
+  const [showAdmin, setShowAdmin] = useState(false);
+
+  // Admin check
+  const isAdmin = userData?.isAdmin === true || userData?.email === "alqaidpro@gmail.com" || userEmail === "alqaidpro@gmail.com" || userData?.role === "admin";
 
   // Profile State
   const [profile, setProfile] = useState({
-    name: "",
-    country: "",
-    province: "",
-    city: "",
-    address: "",
-    phone: ""
+    name: userData?.name || "",
+    country: userData?.country || "",
+    province: userData?.province || "",
+    city: userData?.city || "",
+    address: userData?.address || "",
+    phone: userData?.phone || ""
   });
+
+  useEffect(() => {
+    if (userData) {
+      setProfile({
+        name: userData.name || "",
+        country: userData.country || "",
+        province: userData.province || "",
+        city: userData.city || "",
+        address: userData.address || "",
+        phone: userData.phone || ""
+      });
+    }
+  }, [userData]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!auth.currentUser) return;
+    try {
+      await updateDoc(doc(db, "users", auth.currentUser.uid), profile);
+      showToast("✅ تم حفظ البيانات بنجاح");
+      setActiveModal(null);
+    } catch (err) {
+      console.error(err);
+      showToast("❌ فشل حفظ البيانات");
+    }
+  };
 
   const COUNTRIES = [
     { n: "مصر", f: "🇪🇬" },
@@ -48,7 +100,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
     { n: "الأردن", f: "🇯🇴" },
     { n: "العراق", f: "🇮🇶" },
     { n: "لبنان", f: "🇱🇧" },
-    { n: "المغرب", f: "🇲🇦" },
+    { n: "المغرب", f: "مغ" },
     { n: "تونس", f: "🇹🇳" },
     { n: "الجزائر", f: "🇩🇿" }
   ];
@@ -103,6 +155,10 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
     </div>
   );
 
+  if (showAdmin) {
+    return <AdminPanel onBack={() => setShowAdmin(false)} orders={orders} onUpdateOrder={onUpdateOrder} users={users} onUpdateUser={onUpdateUser} tickets={tickets} onUpdateTicket={onUpdateTicket} depositRequests={depositRequests} />;
+  }
+
   return (
     <div style={{ padding: "0 16px 110px", maxWidth: 480, margin: "0 auto" }}>
       {/* Header */}
@@ -137,6 +193,19 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         <Row icon="📱" name="الجلسات النشطة" sub="جهازان مسجلان" badge="٢ أجهزة" onClick={() => setActiveModal("sessions")} badgeColor="rgba(255,170,46,.14)" />
       </Section>
 
+      {/* Admin Panel Entry */}
+      {isAdmin && (
+        <Section title="منطقة الإدارة (خاص)">
+          <Row 
+            icon="💎" 
+            name="لوحة الإدارة الكاملة" 
+            sub="إدارة المستخدمين، الطلبات، والطلبات المالية" 
+            onClick={() => setShowAdmin(true)} 
+            badgeColor="rgba(59,130,246,.25)" 
+          />
+        </Section>
+      )}
+
       {/* Danger Zone */}
       <Section title="منطقة الخطر">
         <Row icon="🚪" name="تسجيل الخروج" sub="الخروج من الحساب الحالي" danger onClick={() => setActiveModal("logout")} badgeColor="rgba(255,77,106,.14)" />
@@ -160,30 +229,30 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
             {activeModal === "profile" && (
               <div dir="rtl">
                 <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 8, color: T.text, fontFamily: T.font, textAlign: "right" }}>👤 بياناتي</div>
-                <div style={{ fontSize: 12, color: T.orange, background: "rgba(255,170,46,0.1)", padding: "10px 14px", borderRadius: 12, marginBottom: 20, fontFamily: T.font, textAlign: "right", border: `1px solid rgba(255,170,46,0.2)` }}> 
-                  ⚠️ تنبيه: هذه البيانات هي التي سيتم إرسال جميع طلباتك وشحناتك إليها، يرجى التأكد من صحتها.
+                <div style={{ fontSize: 11, color: T.orange, background: "rgba(255,170,46,0.08)", padding: "10px 14px", borderRadius: 12, marginBottom: 15, fontFamily: T.font, textAlign: "right", border: `1px solid rgba(255,170,46,0.15)` }}> 
+                  تنبيه: تُستخدم هذه البيانات لإرسال الشحنات والطلبات. يرجى التأكد من دقتها.
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, maxHeight: "60vh", overflowY: "auto", padding: "0 4px 20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxHeight: "60vh", overflowY: "auto", padding: "0 2px 10px" }}>
                   {/* Name */}
-                  <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>الاسم الكامل</label>
+                  <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: T.font }}>الاسم الكامل</label>
                     <input 
                       type="text" 
                       value={profile.name} 
                       onChange={(e) => setProfile({...profile, name: e.target.value})}
                       placeholder="أدخل اسمك بالكامل"
-                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 10, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
                     />
                   </div>
 
                   {/* Country */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>البلد</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: T.font }}>البلد</label>
                     <select 
                       value={profile.country} 
                       onChange={(e) => setProfile({...profile, country: e.target.value, province: ""})}
-                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13, appearance: "none" }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 10, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13, appearance: "none" }}
                     >
                       <option value="" style={{ background: "#000" }}>اختر البلد</option>
                       {COUNTRIES.map(c => <option key={c.n} value={c.n} style={{ background: "#000" }}>{c.f} {c.n}</option>)}
@@ -191,25 +260,25 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
                   </div>
 
                   {/* Phone */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>رقم الهاتف</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: T.font }}>رقم الهاتف</label>
                     <input 
                       type="tel" 
                       value={profile.phone} 
                       onChange={(e) => setProfile({...profile, phone: e.target.value})}
                       placeholder="رقم الهاتف"
-                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 10, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
                     />
                   </div>
 
                   {/* Province (Only for Egypt) */}
                   {profile.country === "مصر" && (
-                    <div className="fadeDown" style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 6 }}>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>المحافظة</label>
+                    <div className="fadeDown" style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: T.font }}>المحافظة</label>
                       <select 
                         value={profile.province} 
                         onChange={(e) => setProfile({...profile, province: e.target.value})}
-                        style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13, appearance: "none" }}
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 10, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13, appearance: "none" }}
                       >
                         <option value="" style={{ background: "#000" }}>اختر المحافظة</option>
                         {EGYPT_PROVINCES.map(p => <option key={p} value={p} style={{ background: "#000" }}>{p}</option>)}
@@ -218,35 +287,35 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
                   )}
 
                   {/* City */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>المدينة</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: T.font }}>المدينة</label>
                     <input 
                       type="text" 
                       value={profile.city} 
                       onChange={(e) => setProfile({...profile, city: e.target.value})}
                       placeholder="المدينة"
-                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 10, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
                     />
                   </div>
 
                   {/* Address */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, fontFamily: T.font }}>العنوان</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: T.font }}>العنوان</label>
                     <input 
                       type="text" 
                       value={profile.address} 
                       onChange={(e) => setProfile({...profile, address: e.target.value})}
-                      placeholder="العنوان بالتفصيل"
-                      style={{ width: "100%", padding: "10px 12px", borderRadius: 12, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
+                      placeholder="العنوان"
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 10, background: "#000", border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, fontSize: 13 }} 
                     />
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                <div style={{ display: "flex", gap: 10, marginTop: 5 }}>
                   <button 
-                    onClick={() => { showToast("✅ تم حفظ البيانات بنجاح"); setActiveModal(null); }} 
+                    onClick={handleSaveProfile} 
                     className="tap" 
-                    style={{ flex: 1, padding: 14, background: T.accent, borderRadius: 14, color: "white", fontWeight: 800, fontFamily: T.font, border: "none" }}
+                    style={{ flex: 1, padding: 12, background: T.accent, borderRadius: 12, color: "white", fontWeight: 800, fontFamily: T.font, border: "none", fontSize: 14 }}
                   >
                     حفظ البيانات
                   </button>
@@ -290,7 +359,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
                 <div style={{ fontSize: 48, marginBottom: 10 }}>🚪</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text, fontFamily: T.font }}>تسجيل الخروج</div>
                 <div style={{ fontSize: 13, color: T.text2, marginBottom: 20, lineHeight: 1.6, fontFamily: T.font }}>هل أنت متأكد أنك تريد الخروج من حسابك؟ ستحتاج إلى تسجيل الدخول مجدداً.</div>
-                <button onClick={() => window.location.reload()} className="tap" style={{ width: "100%", padding: 14, background: "rgba(255,77,106,.1)", border: `1px solid rgba(255,77,106,.2)`, borderRadius: 14, color: T.red, fontWeight: 700, marginBottom: 10, fontFamily: T.font }}>نعم، تسجيل الخروج</button>
+                <button onClick={handleLogout} className="tap" style={{ width: "100%", padding: 14, background: "rgba(255,77,106,.1)", border: `1px solid rgba(255,77,106,.2)`, borderRadius: 14, color: T.red, fontWeight: 700, marginBottom: 10, fontFamily: T.font }}>نعم، تسجيل الخروج</button>
               </div>
             )}
 

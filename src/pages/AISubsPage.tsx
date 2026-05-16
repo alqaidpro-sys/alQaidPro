@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { processPurchase } from "../services/purchaseService";
 
 const C = {
   bg:      "#050810",
@@ -198,15 +199,35 @@ export default function AISubsPage({ balance=5000, setBalance, onBack=()=>{}, on
     }
   };
 
-  const buy = () => {
+  const buy = async () => {
     if (!email.trim())  { setErr("يرجى إدخال "+svc?.emailLabel); return; }
     if (!selPlan)       { setErr("يرجى اختيار مدة الاشتراك"); return; }
-    if (!canBuy)        { setErr("رصيدك غير كافٍ — اشحن المحفظة أولاً"); return; }
-    setErr(""); setLoading(true);
-    setTimeout(() => {
-      if (setBalance) setBalance((b: number) => b - (selPlan?.egp || 0));
-      setLoading(false); setDone(true);
-    }, 1800);
+    if (balance < selPlan.egp) { setErr("رصيدك غير كافٍ — اشحن المحفظة أولاً"); return; }
+    
+    setErr(""); 
+    setLoading(true);
+    
+    try {
+      if (!svc || !selPlan) return;
+      await processPurchase({
+        serviceId: svc.id,
+        serviceName: svc.name,
+        icon: svc.icon,
+        color: svc.color,
+        amount: selPlan.egp,
+        details: {
+          email,
+          plan: selPlan.n,
+          months: selPlan.months,
+          type: "AI_SUBSCRIPTION"
+        }
+      });
+      setDone(true);
+    } catch (err: any) {
+      setErr(err.message || "حدث خطأ أثناء إتمام الطلب");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* ── SUCCESS ── */
@@ -336,7 +357,7 @@ export default function AISubsPage({ balance=5000, setBalance, onBack=()=>{}, on
                     <button key={i} className="tap" onClick={()=>setPlan(p.n)}
                       style={{ padding:"14px 10px", borderRadius:14, fontSize:12, fontWeight:800, background: plan===p.n?`${svc.color}18`:C.card, border:`2px solid ${plan===p.n?svc.color:C.border}`, color: plan===p.n?svc.color:C.text, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:6, position:"relative", overflow:"hidden" }}>
                       {p.save && (
-                        <span style={{ position:"absolute", top:6, left:6, background: p.save.includes("محدود")||p.save.includes("الأقوى")?`${svc.color}22`:"rgba(34,197,94,.15)", color: p.save.includes("محدود")||p.save.includes("الأقوى")?svc.color:C.green, fontSize:8, fontWeight:900, padding:"2px 7px", borderRadius:20 }}>
+                        <span style={{ position:"absolute", top:6, left:6, background: (p.save?.includes("محدود")||p.save?.includes("الأقوى"))?`${svc.color}22`:"rgba(34,197,94,.15)", color: (p.save?.includes("محدود")||p.save?.includes("الأقوى"))?svc.color:C.green, fontSize:8, fontWeight:900, padding:"2px 7px", borderRadius:20 }}>
                           {p.save}
                         </span>
                       )}

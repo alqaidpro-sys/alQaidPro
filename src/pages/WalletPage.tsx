@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
+import { doc, collection, addDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 
 const T = {
   bg:      "#050810",
@@ -25,15 +27,6 @@ const PAYMENT_METHODS = [
 ];
 
 const QUICK_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
-
-const SAMPLE_TXS = [
-  { name: "شحن رصيد — فودافون كاش", amount: 200, type: "شحن",   date: "٢٠٢٦/٥/٨",  icon: "💰", color: "#EF4444" },
-  { name: "ChatGPT Plus شهر",        amount: 150, type: "مدفوع", date: "٢٠٢٦/٥/٨",  icon: "🤖", color: "#10B981" },
-  { name: "شحن رصيد — InstaPay",     amount: 500, type: "شحن",   date: "٢٠٢٦/٥/٧",  icon: "💰", color: "#8B5CF6" },
-  { name: "شحن UC PUBG 3850",        amount: 240, type: "مدفوع", date: "٢٠٢٦/٥/٧",  icon: "🎯", color: "#EAB308" },
-  { name: "Netflix Premium شهر",     amount: 120, type: "مدفوع", date: "٢٠٢٦/٥/٦",  icon: "📺", color: "#EF4444" },
-  { name: "شحن رصيد — اتصالات كاش",     amount: 1000,type: "شحن",   date: "٢٠٢٦/٥/٥",  icon: "💰", color: "#10B981" },
-];
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
@@ -128,9 +121,9 @@ function Badge({ label, color }: any) {
   return <span style={{ padding: "2px 8px", fontSize: 9, fontWeight: 800, borderRadius: 20, background: `${color}20`, color, border: `1px solid ${color}30`, display: "inline-block", whiteSpace: "nowrap" }}>{label}</span>;
 }
 
-export default function WalletPage({ balance = 5000, setBalance, onBack }: any) {
+export default function WalletPage({ balance = 0, setBalance, onBack, transactions = [] }: any) {
   const [points,  setPoints]    = useState(450);
-  const [txs, setTxs]           = useState(SAMPLE_TXS);
+  const [txs, setTxs]           = useState([]);
   const [step, setStep]         = useState("main");
   const [amount, setAmount]     = useState(200);
   const [custom, setCustom]     = useState("");
@@ -146,35 +139,67 @@ export default function WalletPage({ balance = 5000, setBalance, onBack }: any) 
 
   const reset = () => { setStep("main"); setAmount(200); setCustom(""); setMethod(null); setFields({}); };
 
-  const confirm = () => {
+  const confirm = async () => {
     const miss = method.fields.find((f: any) => !fields[f]?.trim());
     if (miss) { alert(`يرجى ملء: ${miss}`); return; }
+    if (!auth.currentUser) return;
+    
     setLoading(true);
-    setTimeout(() => {
-      const id = "RCP-" + Math.random().toString(36).substr(2, 8).toUpperCase();
-      setBalance(b => b + finalAmt);
-      setPoints(p => p + Math.floor(finalAmt / 10));
-      setTxs(prev => [{ name: `شحن رصيد — ${method.name}`, amount: finalAmt, type: "شحن", date: new Date().toLocaleDateString("ar-EG"), icon: "💰", color: T.green }, ...prev]);
+    try {
+      const id = "DEP-" + Math.random().toString(36).substr(2, 8).toUpperCase();
+      
+      // Create deposit request in a specific collection
+      const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+      await addDoc(collection(db, "deposit_requests"), {
+        id,
+        methodName: method.name,
+        amount: finalAmt, // numeric value
+        fee,
+        totalPay,
+        paymentDetails: fields,
+        userId: auth.currentUser.uid,
+        userEmail: auth.currentUser.email,
+        userName: auth.currentUser.displayName || auth.currentUser.email,
+        status: "pending", // strictly pending for admin review
+        createdAt: serverTimestamp(),
+        dateFormatted: new Date().toLocaleString("ar-EG")
+      });
+
       setReceipt({ amount: finalAmt, fee, method: method.name, id, time: new Date().toLocaleTimeString("ar-EG") });
-      setLoading(false);
       setStep("success");
-    }, 1800);
+    } catch (err: any) {
+      console.error("Deposit request error:", err);
+      alert("⚠️ فشل في إرسال طلب الشحن: " + (err.message || "خطأ غير معروف"));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const totalIn   = txs.filter(t => t.type === "شحن").reduce((a, t) => a + t.amount, 0);
-  const totalOut  = txs.filter(t => t.type === "مدفوع").reduce((a, t) => a + t.amount, 0);
-  const filtered  = filter === "الكل" ? txs : txs.filter(t => t.type === filter);
+  // Only count completed transactions in totals to avoid confusion
+  const totalIn   = transactions.filter((t: any) => t.type === "TOPUP" && t.status === "completed").reduce((a: any, t: any) => {
+    const val = t.amountValue !== undefined ? t.amountValue : Number(String(t.amount || "0").replace(/[^\d.]/g, ""));
+    return a + val;
+  }, 0);
+  const totalOut  = transactions.filter((t: any) => t.type !== "TOPUP" && (t.status === "completed" || t.status === "active" || t.status === "processing")).reduce((a: any, t: any) => {
+    const val = t.amountValue !== undefined ? t.amountValue : Number(String(t.amount || "0").replace(/[^\d.]/g, ""));
+    return a + val;
+  }, 0);
+  const filtered  = filter === "الكل" ? transactions : transactions.filter((t: any) => {
+    if (filter === "شحن") return t.type === "TOPUP";
+    if (filter === "مدفوع") return t.type !== "TOPUP";
+    return true;
+  });
 
   /* ── SUCCESS ── */
   if (step === "success") return (
     <>
       <style>{css}</style>
       <div dir="rtl" style={{ background: T.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 32, fontFamily: T.font }}>
-        <div className="float" style={{ fontSize: 86, marginBottom: 18 }}>🎉</div>
-        <h2 style={{ fontSize: 26, fontWeight: 900, color: T.text, marginBottom: 6 }}>تم الشحن بنجاح!</h2>
-        <p style={{ fontSize: 13, color: T.sub2, textAlign: "center", marginBottom: 22 }}>تمت إضافة الرصيد لمحفظتك فوراً.</p>
+        <div className="float" style={{ fontSize: 86, marginBottom: 18 }}>⏳</div>
+        <h2 style={{ fontSize: 26, fontWeight: 900, color: T.text, marginBottom: 6 }}>طلب الشحن قيد المراجعة</h2>
+        <p style={{ fontSize: 13, color: T.sub2, textAlign: "center", marginBottom: 22 }}>تم استلام طلبك بنجاح. سيتم مراجعة البيانات وإضافة الرصيد لمحفظتك خلال دقائق قليلة.</p>
         <GlassCard glow style={{ padding: 22, width: "100%", maxWidth: 340 }}>
-          {[["المبلغ المشحون", `£${receipt?.amount}`, T.green], ["العمولة", receipt?.fee > 0 ? `£${receipt.fee}` : "مجاناً ✓", T.yellow], ["طريقة الدفع", receipt?.method, T.text], ["وقت العملية", receipt?.time, T.sub2], ["رقم الإيصال", receipt?.id, T.blue]].map(([l, v, c], i, a) => (
+          {[["المبلغ المطلوب", `£${receipt?.amount}`, T.green], ["العمولة", receipt?.fee > 0 ? `£${receipt.fee}` : "مجاناً ✓", T.yellow], ["طريقة الدفع", receipt?.method, T.text], ["حالة الطلب", "جاري المراجعة...", T.yellow], ["رقم الطلب", receipt?.id, T.blue]].map(([l, v, c], i, a) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < a.length - 1 ? `1px solid ${T.border}` : "none" }}>
               <span style={{ color: T.sub as string, fontSize: 12 }}>{l}</span>
               <span style={{ color: c as string, fontWeight: 800, fontSize: 13, direction: "ltr" }}>{v}</span>
@@ -386,12 +411,17 @@ export default function WalletPage({ balance = 5000, setBalance, onBack }: any) 
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{tx.name}</div>
                           <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
-                            <Badge label={tx.type === "شحن" ? "⬆️ شحن" : "⬇️ مدفوع"} color={tx.type === "شحن" ? T.green : T.red}/>
+                            <Badge label={tx.type === "TOPUP" ? "⬆️ شحن" : "⬇️ مدفوع"} color={tx.type === "TOPUP" ? T.green : T.red}/>
+                            {tx.status === "processing" && <Badge label="⏳ قيد المراجعة" color={T.yellow}/>}
+                            {tx.status === "rejected" && <Badge label="❌ مرفوض" color={T.red}/>}
                             <span style={{ fontSize: 9, color: T.sub }}>{tx.date}</span>
                           </div>
                         </div>
                       </div>
-                      <div style={{ fontSize: 15, fontWeight: 900, color: tx.type === "شحن" ? T.green : T.text }}>{tx.type === "شحن" ? "+" : "-"}£{tx.amount}</div>
+                      <div style={{ textAlign: "left" }}>
+                        <div style={{ fontSize: 15, fontWeight: 900, color: tx.type === "TOPUP" ? T.green : T.text }}>{tx.type === "TOPUP" ? "+" : "-"}£{tx.amount}</div>
+                        {tx.status === "completed" && <div style={{ fontSize: 8, color: T.green, textAlign: "left", marginTop: 2 }}>مكتمل ✓</div>}
+                      </div>
                     </div>
                   </GlassCard>
                 ))}

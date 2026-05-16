@@ -50,8 +50,4 @@ export const G = {
 export const TOPUP_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 export const NETWORKS = ["فودافون كاش", "اتصالات كاش", "أورانج كاش", "إنستا باي", "Binance Pay", "Pyypl"];
 export const DURATIONS = ["شهر واحد", "3 أشهر", "6 أشهر", "سنة كاملة"];
-export const TRANSACTIONS = [
-  { id: 1, name: "شحن رصيد", amount: "+ 5000", type: "شحن", date: "2024-05-15", status: "ناجح", icon: "💰", color: "#10b981" },
-  { id: 2, name: "اشتراك Netflix", amount: "- 240", type: "اشتراك", date: "2024-05-14", status: "ناجح", icon: "🍿", color: "#E50914" },
-  { id: 3, name: "شراء شدات PUBG", amount: "- 450", type: "شراء", date: "2024-05-12", status: "ناجح", icon: "🎮", color: "#FFB800" }
-];
+// TRANSACTIONS removed in favor of real Firebase data

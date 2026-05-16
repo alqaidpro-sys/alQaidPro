@@ -19,7 +19,7 @@ export function PageHeader({ title, subtitle, onBack }: { title: string, subtitl
   );
 }
 
-export function BalanceBadge({ compact }: { compact?: boolean }) {
+export function BalanceBadge({ compact, balance = 0 }: { compact?: boolean, balance?: number }) {
   return (
     <div style={{
       background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.18)",
@@ -29,7 +29,7 @@ export function BalanceBadge({ compact }: { compact?: boolean }) {
       <div>
         <div style={{ fontSize: 10, color: G.sub, marginBottom: 3 }}>الرصيد المتاح</div>
         <div style={{ fontSize: compact ? 22 : 28, fontWeight: 900, color: G.text, fontFamily: G.font, letterSpacing: -1 }}>
-          £<span style={{ color: G.blue }}>5,000</span>
+          £<span style={{ color: G.blue }}>{balance.toLocaleString()}</span>
         </div>
       </div>
       <div style={{
