@@ -171,9 +171,13 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
     }
   };
 
-  // Improved filtering logic to ensure items disappear immediately after processing
-  const activeOrders = regularOrders.filter(o => o.status === "active" && o.stage !== 3);
-  const pendingTopups = depositRequests.filter(r => r.status === "pending");
+  // Improved filtering logic to ensure items are visible until fully completed/rejected
+  const activeOrders = regularOrders.filter(o => {
+    // Include any order that isn't terminal (completed/rejected) and hasn't reached stage 3
+    const isTerminal = o.status === "completed" || o.status === "rejected";
+    return !isTerminal && o.stage !== 3;
+  });
+  const pendingTopups = depositRequests.filter(r => r.status === "pending" || r.status === "processing");
   const pendingTickets = tickets.filter(s => s.status === "open");
 
   return (
@@ -320,16 +324,20 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
                         { l: "مراجعة", s: 0, c: "#FBBF24" },
                         { l: "موافقة", s: 1, c: "#3B82F6" },
                         { l: "تنفيذ", s: 2, c: "#F97316" },
+                        { l: "مرفوض", s: 3, c: T.red, status: "rejected" },
                         { l: "اكتمل", s: 3, c: "#10B981" }
                       ].map(st => (
                         <button 
-                          key={st.s}
-                          onClick={() => onUpdateOrder && onUpdateOrder(o.id, { stage: st.s, status: st.s === 3 ? "completed" : "active" })}
+                          key={st.l}
+                          onClick={() => onUpdateOrder && onUpdateOrder(o.id, { 
+                            stage: st.s, 
+                            status: st.status || (st.s === 3 ? "completed" : "active") 
+                          })}
                           style={{ 
                             flex: 1, padding: "8px 4px", fontSize: 10, borderRadius: 8, 
-                            background: o.stage === st.s ? st.c : T.surface,
-                            color: o.stage === st.s ? "white" : T.sub,
-                            border: `1px solid ${o.stage === st.s ? st.c : T.border}`,
+                            background: (o.status === st.status || (o.stage === st.s && !st.status)) ? st.c : T.surface,
+                            color: (o.status === st.status || (o.stage === st.s && !st.status)) ? "white" : T.sub,
+                            border: `1px solid ${(o.status === st.status || (o.stage === st.s && !st.status)) ? st.c : T.border}`,
                             fontWeight: 800
                           }}
                         >
@@ -359,8 +367,20 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
                  ) : (
                    pendingTopups.map(req => (
                      <div key={req.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 18 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: T.green }}>شحن: £{req.amount}</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, alignItems: "center" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ fontSize: 14, fontWeight: 900, color: T.green }}>شحن: £{req.amount}</div>
+                            <button 
+                              onClick={() => handleRejectDeposit(req)} 
+                              className="tap"
+                              style={{ 
+                                padding: "3px 8px", fontSize: 10, borderRadius: 6, 
+                                background: T.red + "20", color: T.red, border: `1px solid ${T.red}40`, fontWeight: 900 
+                              }}
+                            >
+                              مرفوض ❌
+                            </button>
+                          </div>
                           <div style={{ fontSize: 10, color: T.sub }}>{req.dateFormatted}</div>
                         </div>
                         <div style={{ fontSize: 12, color: T.accent, marginBottom: 10 }}>المستخدم: {req.userEmail}</div>
