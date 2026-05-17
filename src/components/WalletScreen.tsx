@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { G, TRANSACTIONS } from "../data";
+import { G } from "../data";
 import { PageHeader, PrimaryBtn } from "./Shared";
 
 export function WalletScreen() {
   const [showTopup, setShowTopup] = useState(false);
   const [amount, setAmount] = useState("");
   const [sender, setSender] = useState("");
+  const TRANSACTIONS: any[] = [];
 
   return (
     <div style={{ paddingBottom: 110 }}>

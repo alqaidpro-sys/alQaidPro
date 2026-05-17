@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { doc, collection, addDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { doc, collection, setDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { G } from "../data";
+import { ModernWalletCard } from "../components/Shared";
 
 const T = {
   bg:      "#050810",
@@ -121,8 +123,7 @@ function Badge({ label, color }: any) {
   return <span style={{ padding: "2px 8px", fontSize: 9, fontWeight: 800, borderRadius: 20, background: `${color}20`, color, border: `1px solid ${color}30`, display: "inline-block", whiteSpace: "nowrap" }}>{label}</span>;
 }
 
-export default function WalletPage({ balance = 0, setBalance, onBack, transactions = [] }: any) {
-  const [points,  setPoints]    = useState(450);
+export default function WalletPage({ balance = 0, setBalance, onBack, transactions = [], userData }: any) {
   const [txs, setTxs]           = useState([]);
   const [step, setStep]         = useState("main");
   const [amount, setAmount]     = useState(200);
@@ -149,8 +150,7 @@ export default function WalletPage({ balance = 0, setBalance, onBack, transactio
       const id = "DEP-" + Math.random().toString(36).substr(2, 8).toUpperCase();
       
       // Create deposit request in a specific collection
-      const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
-      await addDoc(collection(db, "deposit_requests"), {
+      await setDoc(doc(db, "deposit_requests", id), {
         id,
         methodName: method.name,
         amount: finalAmt, // numeric value
@@ -159,19 +159,19 @@ export default function WalletPage({ balance = 0, setBalance, onBack, transactio
         paymentDetails: fields,
         userId: auth.currentUser.uid,
         userEmail: auth.currentUser.email,
-        userName: auth.currentUser.displayName || auth.currentUser.email,
+        userName: userData?.name || auth.currentUser.displayName || auth.currentUser.email,
         status: "pending", // strictly pending for admin review
         createdAt: serverTimestamp(),
         dateFormatted: new Date().toLocaleString("ar-EG")
       });
 
       setReceipt({ amount: finalAmt, fee, method: method.name, id, time: new Date().toLocaleTimeString("ar-EG") });
+      setLoading(false);
       setStep("success");
     } catch (err: any) {
       console.error("Deposit request error:", err);
-      alert("⚠️ فشل في إرسال طلب الشحن: " + (err.message || "خطأ غير معروف"));
-    } finally {
       setLoading(false);
+      alert("⚠️ فشل في إرسال طلب الشحن: " + (err.message || "خطأ غير معروف"));
     }
   };
 
@@ -184,6 +184,7 @@ export default function WalletPage({ balance = 0, setBalance, onBack, transactio
     const val = t.amountValue !== undefined ? t.amountValue : Number(String(t.amount || "0").replace(/[^\d.]/g, ""));
     return a + val;
   }, 0);
+  const points = Math.floor(totalOut / 10);
   const filtered  = filter === "الكل" ? transactions : transactions.filter((t: any) => {
     if (filter === "شحن") return t.type === "TOPUP";
     if (filter === "مدفوع") return t.type !== "TOPUP";
@@ -236,31 +237,14 @@ export default function WalletPage({ balance = 0, setBalance, onBack, transactio
           </div>
 
           {/* Balance card */}
-          <div style={{ padding: "16px 20px 0" }}>
-            <GlassCard glow style={{ padding: 22, background: "linear-gradient(135deg,rgba(79,142,247,.08),rgba(14,217,160,.04))", border: "1px solid rgba(79,142,247,.2)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: T.sub, marginBottom: 5, letterSpacing: 1 }}>الرصيد المتاح</div>
-                  <div style={{ fontSize: 38, fontWeight: 900, color: T.text, lineHeight: 1 }}>£<span style={{ color: T.blue }}>{balance.toLocaleString()}</span></div>
-                  <div style={{ fontSize: 10, color: T.sub, marginTop: 4 }}>جنيه مصري</div>
-                </div>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontSize: 10, color: T.sub, marginBottom: 4 }}>نقاط المكافآت</div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: T.yellow }}>⭐ {points.toLocaleString()}</div>
-                  <div style={{ fontSize: 9, color: T.sub }}>= £{(points / 10).toFixed(0)} خصم</div>
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, background: "rgba(0,0,0,.2)", borderRadius: 12, padding: 12 }}>
-                {[["إجمالي الشحن", `£${totalIn.toLocaleString()}`, "⬆️"], ["إجمالي المصروف", `£${totalOut.toLocaleString()}`, "⬇️"], ["قيمة النقاط", `£${(points/10).toFixed(0)}`, "💎"]].map(([l, v, i], idx) => (
-                  <div key={idx} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 15, marginBottom: 3 }}>{i}</div>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: T.text }}>{v}</div>
-                    <div style={{ fontSize: 9, color: T.sub }}>{l}</div>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
-          </div>
+          <ModernWalletCard 
+            balance={balance} 
+            points={points} 
+            totalIn={totalIn} 
+            totalOut={totalOut} 
+            onTopup={() => { setStep("main"); }}
+            onTransfer={onBack}
+          />
 
           {/* ══ TOPUP FLOW ══ */}
           <div style={{ padding: "20px 20px 0" }}>

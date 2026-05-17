@@ -15,6 +15,7 @@ import { ServiceDetailScreen } from "./components/ServiceDetailScreen";
 import { CartScreen } from "./components/CartScreen";
 import { BottomNav } from "./components/BottomNav";
 import { SupportScreen } from "./components/SupportScreen";
+import { AnnouncementModal } from "./components/Shared";
 
 // Firebase
 import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
@@ -59,6 +60,41 @@ export default function App() {
   const [depositRequests, setDepositRequests] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAnnouncement, setShowAnnouncement] = useState(false);
+
+  useEffect(() => {
+    // Show announcement on first load of the app after auth is determined
+    if (user && !loading) {
+      const hasShown = sessionStorage.getItem("announcement_shown");
+      if (!hasShown) {
+        setShowAnnouncement(true);
+        sessionStorage.setItem("announcement_shown", "true");
+      }
+    }
+  }, [user, loading]);
+
+  // Merge orders and deposit requests for history/wallet
+  const allTransactions = [
+    ...transactions,
+    ...depositRequests.map(r => ({
+      id: r.id,
+      name: `شحن رصيد — ${r.methodName}`,
+      amount: `£${Number(r.amount).toLocaleString()}`,
+      amountValue: r.amount,
+      icon: "💰",
+      color: "#10b981",
+      type: "TOPUP",
+      status: r.status === "approved" ? "completed" : r.status, // Map approved to completed for WalletPage calcs
+      stage: r.status === "approved" ? 3 : 0,
+      userId: r.userId,
+      date: r.dateFormatted || (r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString("ar-EG") : "قيد المعالجة..."),
+      createdAt: r.createdAt
+    }))
+  ].sort((a, b) => {
+    const timeA = a.createdAt?.seconds || 0;
+    const timeB = b.createdAt?.seconds || 0;
+    return timeB - timeA;
+  });
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
@@ -152,19 +188,19 @@ export default function App() {
     }
     
     const unsubOrders = onSnapshot(q, (snap) => {
-      setTransactions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setTransactions(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     }, (err) => handleFirestoreError(err, OperationType.LIST, "orders"));
 
     const unsubSupport = onSnapshot(qSupport, (snap) => {
-      setSupportTickets(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setSupportTickets(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     }, (err) => handleFirestoreError(err, OperationType.LIST, "support_tickets"));
 
     const unsubDeposits = onSnapshot(qDeposits, (snap) => {
-      setDepositRequests(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setDepositRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     }, (err) => handleFirestoreError(err, OperationType.LIST, "deposit_requests"));
 
     const unsubNotifs = onSnapshot(qNotifs, (snap) => {
-      setNotifications(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setNotifications(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     }, (err) => handleFirestoreError(err, OperationType.LIST, "notifications"));
 
     return () => {
@@ -238,12 +274,12 @@ export default function App() {
           balance={balance} 
           cartCount={cart.length} 
           userData={userData}
-          transactions={transactions}
+          transactions={allTransactions}
           notifications={notifications}
         />
       ),
       "services": <ServicesScreen setServiceDetail={setServiceDetail} setTab={handleSetTab} cartCount={cart.length} />,
-      "wallet": <WalletPage balance={balance} setBalance={updateBalance} onBack={() => handleSetTab("home")} transactions={transactions} />,
+      "wallet": <WalletPage balance={balance} setBalance={updateBalance} onBack={() => handleSetTab("home")} transactions={allTransactions} userData={userData} />,
       "logistics": <LogisticsPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
       "ai_subs": <AISubsPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
       "tv_subs": <TVSubsPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
@@ -253,12 +289,12 @@ export default function App() {
       "binance": <BinancePage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
       "pyypl": <PyyplPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
       "usd_transfer": <USDTransferPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
-      "history": <HistoryScreen onBack={() => handleSetTab("home")} transactions={transactions} />,
+      "history": <HistoryScreen onBack={() => handleSetTab("home")} transactions={allTransactions} onSetTab={handleSetTab} />,
       "support": <SupportScreen onBack={() => handleSetTab("home")} userEmail={user?.email!} userData={userData} tickets={supportTickets} />,
       "settings": <SettingsScreen 
         onBack={() => handleSetTab("home")} 
         userEmail={user?.email} 
-        orders={transactions} 
+        orders={allTransactions} 
         onUpdateOrder={handleUpdateOrder} 
         users={users} 
         onUpdateUser={handleUpdateUsers} 
@@ -282,7 +318,12 @@ export default function App() {
     };
 
     return (
-      <AnimatePresence mode="wait">
+      <>
+        <AnimatePresence>
+          {showAnnouncement && <AnnouncementModal onClose={() => setShowAnnouncement(false)} />}
+        </AnimatePresence>
+
+        <AnimatePresence mode="wait">
         <motion.div
           key={tab}
           initial={{ opacity: 0, y: 10 }}
@@ -307,6 +348,7 @@ export default function App() {
         )}
         </motion.div>
       </AnimatePresence>
+      </>
     );
   };
 
@@ -329,22 +371,22 @@ export default function App() {
           <>
             {renderScreen()}
             {(!serviceDetail && !["logistics", "ai_subs", "tv_subs", "games", "real_ai", "paypal", "binance", "pyypl", "usd_transfer"].includes(tab)) && <BottomNav tab={tab} setTab={handleSetTab} />}
-            {/* Support FAB */}
+            {/* Support FAB - Raised and icon changed to message as requested */}
             {tab !== "support" && (
               <button 
                 className="tap" 
                 onClick={() => handleSetTab("support")}
                 style={{
-                  position: "fixed", bottom: 90, left: 20,
-                  width: 48, height: 48, borderRadius: 16,
-                  background: "linear-gradient(135deg,rgba(59,130,246,0.9),rgba(29,78,216,0.9))",
-                  backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.1)",
-                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
-                  boxShadow: "0 8px 32px rgba(59,130,246,0.4)", cursor: "pointer", zIndex: 99,
+                  position: "fixed", bottom: 125, left: 20,
+                  width: 50, height: 50, borderRadius: 16,
+                  background: "linear-gradient(135deg,rgba(59,130,246,0.95),rgba(29,78,216,0.95))",
+                  backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24,
+                  boxShadow: "0 10px 30px rgba(59,130,246,0.5)", cursor: "pointer", zIndex: 99,
                   color: "white"
                 }}
               >
-                🎧
+                💬
               </button>
             )}
           </>

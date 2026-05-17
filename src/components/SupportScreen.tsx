@@ -51,7 +51,7 @@ export function SupportScreen({ onBack, userEmail, userData, tickets = [] }: { o
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "48px 20px 20px" }}>
         <button onClick={onBack} className="tap" style={{ width: 40, height: 40, borderRadius: 12, background: T.surface, border: `1px solid ${T.border}`, color: T.text, fontSize: 18 }}>→</button>
         <div style={{ textAlign: "center" }}>
-          <h1 style={{ fontSize: 20, fontWeight: 900, color: T.text }}>مركز الدعم 🎧</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 900, color: T.text }}>مركز الدعم 💬</h1>
           <p style={{ fontSize: 11, color: T.sub }}>نحن هنا لمساعدتك دائماً</p>
         </div>
         <div style={{ width: 40 }} />

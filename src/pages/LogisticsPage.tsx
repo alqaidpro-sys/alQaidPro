@@ -84,15 +84,14 @@ const SERVICES = [
     name: "شحن رصيد أمازون",
     icon: "💳",
     color: "#f59e0b",
-    discount: null,
-    badge: "ضعف الرصيد",
-    desc: "اشحن رصيد أمازون الخاص بك. كل £1000 رصيد القائد = £2100 رصيد أمازون مباشرة في حسابك.",
+    discount: 0,
+    badge: "توفير ضخم 🔥",
+    desc: "اشحن رصيد أمازون الخاص بك بأسعار حصرية. كل 1000 جنيه تدفعها تحصل مقابلها على 2100 جنيه رصيد أمازون.",
     fields: [
       { key: "phone", label: "رقم الهاتف المسجل",       ph: "01XXXXXXXXX",              dir: "ltr" },
       { key: "email", label: "البريد الإلكتروني المسجل", ph: "example@amazon.com",       dir: "ltr" },
-      { key: "amount",label: "المبلغ المراد شحنه (ج.م)", ph: "مثال: 1000",              dir: "ltr" },
     ],
-    priceField: false,
+    priceField: true,
   },
 ];
 
@@ -205,12 +204,15 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
     if (!allFilled)  { setErr("يرجى ملء جميع الحقول"); return; }
     if (svc?.priceField && origPrice <= 0) { setErr("يرجى إدخال السعر الحقيقي للمنتج"); return; }
     if (svc?.priceField && balance < finalEgp) { setErr("رصيدك غير كافٍ — اشحن المحفظة أولاً"); return; }
+    if (svc.id === "amazon_bal" && origPrice < 1250) { setErr("⚠️ الحد الأدنى لشحن رصيد أمازون هو 1250 ج.م"); return; }
     
     setErr(""); 
     setLoading(true);
     
     try {
       if (!svc) return;
+      const creditToReceive = svc.id === "amazon_bal" ? +(origPrice * 2.1).toFixed(2) : 0;
+      
       await processPurchase({
         serviceId: svc.id,
         serviceName: svc.name,
@@ -221,6 +223,7 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
           ...vals,
           originalPrice: origPrice,
           discount: svc.discount,
+          amazonCreditAmount: creditToReceive,
           type: "LOGISTICS"
         }
       });
@@ -238,27 +241,37 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
       <style>{css}</style>
       <div dir="rtl" style={{ background:C.bg, minHeight:"100vh", maxWidth:430, margin:"0 auto", fontFamily:C.font, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:28, gap:18 }}>
         <div style={{ fontSize:68, animation:"pop .4s ease both" }}>✅</div>
-        <div style={{ fontSize:20, fontWeight:900, color:C.text }}>تم الطلب بنجاح!</div>
-        <p style={{ fontSize:12, color:C.sub, textAlign:"center" }}>سيتم تنفيذ طلبك خلال المدة المحددة. تابع من سجل الطلبات.</p>
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:18, width:"100%" }}>
+        <div style={{ fontSize:20, fontWeight:900, color:C.text }}>فاتورة طلب ناجحة 🧾</div>
+        <p style={{ fontSize:12, color:C.sub, textAlign:"center" }}>تم سحب الرصيد من المحفظة وتسجيل الطلب بنجاح. سنقوم بمراجعة الطلب وتنفيذه في أسرع وقت.</p>
+        
+        <div style={{ background:C.card, border:`2px dashed ${C.border}`, borderRadius:20, padding:22, width:"100%", position:"relative" }}>
+          <div style={{ position:"absolute", top:-12, left:"50%", transform:"translateX(-50%)", background:C.bg, padding:"2px 14px", border:`1px solid ${C.border}`, borderRadius:20, color:C.sub, fontSize:10, fontWeight:800 }}>تفاصيل الفاتورة</div>
+          
           {[
-            ["الخدمة",          svc.name,               C.text  ],
-            ...(svc.priceField ? [
-              ["السعر الأصلي",   `£${origPrice}`,        C.sub   ],
-              ["الخصم",          `${svc.discount}% = £${discAmt}`, C.green ],
-              ["المدفوع",        `£${finalEgp}`,         C.yellow],
-            ] : []),
+            ["اسم الخدمة",      svc.name,               C.text  ],
+            ...(svc.priceField ? (
+              svc.id === "amazon_bal" ? [
+                ["المبلغ المدفوع", `£${origPrice}`,        C.sub   ],
+                ["الرصيد المكتسب", `£${(origPrice * 2.1).toFixed(2)}`, C.green ],
+                ["الخصم من المحفظة", `£${finalEgp}`,         C.yellow],
+              ] : [
+                ["السعر الأصلي",   `£${origPrice}`,        C.sub   ],
+                ["الخصم",          `${svc.discount}% = £${discAmt}`, C.green ],
+                ["إجمالي الدفع",   `£${finalEgp}`,         C.yellow],
+              ]
+            ) : []),
             ...svc.fields.map(f => [f.label, vals[f.key] || "-", C.blue]),
+            ["رقم العملية",    `TX-${Math.random().toString(36).substr(2,6).toUpperCase()}`, C.sub2],
+            ["التاريخ",        new Date().toLocaleString("ar-EG"), C.sub2]
           ].map(([l,v,col],i,a) => (
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom:i<a.length-1?`1px solid ${C.borderB}`:"none" }}>
-              <span style={{ color:C.sub, fontSize:12 }}>{l}</span>
-              <span style={{ color:col as string, fontWeight:800, fontSize:12, direction:"ltr", maxWidth:"55%", textAlign:"left", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v}</span>
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"11px 0", borderBottom:i<a.length-1?`1px solid ${C.borderB}`:"none" }}>
+              <span style={{ fontSize:12, color:C.sub, fontWeight:700 }}>{l}</span>
+              <span style={{ fontSize:13, fontWeight:900, color:col as string, textAlign:"left" }}>{v}</span>
             </div>
           ))}
         </div>
-        <button className="tap" onClick={reset} style={{ width:"100%", padding:"13px", borderRadius:12, fontSize:14, fontWeight:800, background:C.card, border:`1px solid ${C.border}`, color:C.sub, cursor:"pointer" }}>
-          + طلب جديد
-        </button>
+        
+        <button className="tap" onClick={reset} style={{ width:"100%", padding:16, borderRadius:16, background:C.blue, color:"white", fontWeight:900, fontSize:15, border:"none", marginTop:10 }}>العودة للخدمات</button>
       </div>
     </>
   );
@@ -336,8 +349,10 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
               {svc.priceField && (
                 <div>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}>
-                    <span style={{ fontSize:12, color:C.sub, fontWeight:700 }}>السعر الحقيقي للمنتج (بالجنيه)</span>
-                    <span style={{ fontSize:10, color:C.yellow }}>أدخل السعر الأصلي</span>
+                    <span style={{ fontSize:12, color:C.sub, fontWeight:700 }}>
+                      {svc.id === "amazon_bal" ? "المبلغ المطلوب دفعه (بالجنيه)" : "السعر الحقيقي للمنتج (بالجنيه)"}
+                    </span>
+                    <span style={{ fontSize:10, color:C.yellow }}>{svc.id === "amazon_bal" ? "أقل مبلغ 1250 ج.م" : "أدخل السعر الأصلي"}</span>
                   </div>
                   <div style={{ position:"relative" }}>
                     <input className="inp" value={price} onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g,""))}
@@ -349,17 +364,33 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
                   {/* discount breakdown */}
                   {origPrice > 0 && (
                     <div className="fadeUp" style={{ marginTop:9, background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", display:"flex", flexDirection:"column", gap:7 }}>
-                      <div style={{ display:"flex", justifyContent:"space-between" }}>
-                        <span style={{ fontSize:12, color:C.sub }}>السعر الأصلي</span>
-                        <span style={{ fontSize:13, fontWeight:700, color:C.text }}>£{origPrice}</span>
-                      </div>
-                      <div style={{ display:"flex", justifyContent:"space-between" }}>
-                        <span style={{ fontSize:12, color:C.green }}>خصم {svc.discount}%</span>
-                        <span style={{ fontSize:13, fontWeight:700, color:C.green }}>- £{discAmt}</span>
-                      </div>
+                      {svc.id === "amazon_bal" ? (
+                        <>
+                          <div style={{ display:"flex", justifyContent:"space-between" }}>
+                            <span style={{ fontSize:12, color:C.sub }}>المبلغ المدفوع</span>
+                            <span style={{ fontSize:13, fontWeight:700, color:C.text }}>£{origPrice}</span>
+                          </div>
+                          <div style={{ display:"flex", justifyContent:"space-between" }}>
+                            <span style={{ fontSize:12, color:C.green }}>الرصيد الذي ستتحصل عليه</span>
+                            <span style={{ fontSize:13, fontWeight:700, color:C.green }}>£{(origPrice * 2.1).toFixed(2)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ display:"flex", justifyContent:"space-between" }}>
+                            <span style={{ fontSize:12, color:C.sub }}>السعر الأصلي</span>
+                            <span style={{ fontSize:13, fontWeight:700, color:C.text }}>£{origPrice}</span>
+                          </div>
+                          <div style={{ display:"flex", justifyContent:"space-between" }}>
+                            <span style={{ fontSize:12, color:C.green }}>خصم {svc.discount}%</span>
+                            <span style={{ fontSize:13, fontWeight:700, color:C.green }}>- £{discAmt}</span>
+                          </div>
+                        </>
+                      )}
+                      
                       <div style={{ height:1, background:C.border }}/>
                       <div style={{ display:"flex", justifyContent:"space-between" }}>
-                        <span style={{ fontSize:13, fontWeight:800, color:C.text }}>تدفع فقط</span>
+                        <span style={{ fontSize:13, fontWeight:800, color:C.text }}>إجمالي الخصم من المحفظة</span>
                         <span style={{ fontSize:19, fontWeight:900, color:C.yellow }}>£{finalEgp}</span>
                       </div>
                     </div>
@@ -370,7 +401,10 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
               {/* warning */}
               <div style={{ background:"rgba(212,160,23,.06)", border:`1px solid rgba(212,160,23,.22)`, borderRadius:11, padding:"11px 14px" }}>
                 <p style={{ fontSize:11, color:C.yellow, lineHeight:1.85 }}>
-                  ⚠️ تنبيه: إذا كان السعر المُدخل غير مطابق للسعر الحقيقي للمنتج، سيتم إلغاء الطلب تلقائياً وإرجاع كامل الرصيد.
+                  {svc.id === "amazon_bal" 
+                    ? "⚠️ تنبيه: أقل مبلغ لشحن رصيد أمازون هو 1250 ج.م. كل 1000 جنيه شحن يمنحك 2100 جنيه رصيد أمازون."
+                    : "⚠️ تنبيه: إذا كان السعر المُدخل غير مطابق للسعر الحقيقي للمنتج، سيتم إلغاء الطلب تلقائياً وإرجاع كامل الرصيد."
+                  }
                 </p>
               </div>
 

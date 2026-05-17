@@ -46,8 +46,16 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
         const userRef = doc(db, "users", req.userId);
         const requestRef = doc(db, "deposit_requests", req.id);
         
-        const userSnap = await transaction.get(userRef);
-        if (!userSnap.exists()) throw new Error("المستخدم غير موجود");
+        const [userSnap, requestSnap] = await Promise.all([
+          transaction.get(userRef),
+          transaction.get(requestRef)
+        ]);
+
+        if (!userSnap.exists()) throw new Error("المستخدم غير موجود في قاعدة البيانات");
+        if (!requestSnap.exists()) throw new Error("طلب الشحن هذا غير موجود أو تم حذفه");
+        
+        const requestData = requestSnap.data();
+        if (requestData.status !== "pending") throw new Error("تمت معالجة هذا الطلب مسبقاً");
 
         // 1. Update request status
         transaction.update(requestRef, { 
@@ -60,31 +68,13 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
           balance: increment(amount),
           totalTopup: increment(amount)
         });
-
-        // 3. Create a transaction record in orders for history
-        const orderRef = doc(collection(db, "orders"));
-        transaction.set(orderRef, {
-          name: `شحن رصيد — ${req.methodName || "إيداع"}`,
-          amount: `£${amount.toLocaleString()}`,
-          amountValue: amount,
-          icon: "💰",
-          color: "#10b981",
-          type: "TOPUP",
-          status: "completed",
-          userId: req.userId,
-          userEmail: req.userEmail,
-          userName: req.userName,
-          date: new Date().toLocaleDateString("ar-EG") + " " + new Date().toLocaleTimeString("ar-EG"),
-          createdAt: serverTimestamp(),
-          details: { ...req.paymentDetails, depositRequestId: req.id }
-        });
       });
 
       // Send notification
       await addDoc(collection(db, "notifications"), {
         userId: req.userId,
         title: "تم شحن رصيدك بنجاح ✅",
-        msg: `تمت إضافة ${amount} ج.م إلى محفظتك بنجاح. رصيدك الآن جاهز للاستخدام.`,
+        msg: "شكراً لك! تم قبول طلب الشحن وإضافة الرصيد إلى محفظتك بنجاح. رصيد مميز مع القائد! 🚀",
         time: "الآن",
         type: "wallet",
         read: false,
@@ -106,7 +96,10 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
     
     setSubmitting(true);
     try {
-      await updateDoc(doc(db, "deposit_requests", req.id), {
+      const docRef = doc(db, "deposit_requests", req.id);
+      
+      // Check if document exists before updating
+      await updateDoc(docRef, {
         status: "rejected",
         rejectedAt: serverTimestamp()
       });
@@ -114,7 +107,7 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
       await addDoc(collection(db, "notifications"), {
         userId: req.userId,
         title: "تم رفض طلب الشحن ❌",
-        msg: `نعتذر، تم رفض طلب الشحن الخاص بك (£${req.amount}). يرجى التواصل مع الدعم.`,
+        msg: "نعتذر منك، تم رفض طلب الشحن. لقد انتظرنا وصول التحويل ولم يصلنا شيء. يرجى التأكد من بيانات التحويل والمحاولة مرة أخرى. 🛑",
         time: "الآن",
         type: "support",
         read: false,
@@ -123,7 +116,8 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
       
       alert("❌ تم رفض الطلب.");
     } catch (e: any) {
-      alert("⚠️ فشل في رفض الطلب: " + e.message);
+      console.error("Reject deposit error:", e);
+      alert("⚠️ فشل في رفض الطلب: " + (e.message || "خطأ غير معروف"));
     } finally {
       setSubmitting(false);
     }
@@ -132,15 +126,16 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
   const handleReplyTicket = (id: string, userId: string) => {
     const msg = prompt("أدخل ردك على التذكرة:");
     if (msg && onUpdateTicket) {
-      onUpdateTicket(id, { status: "replied", adminReply: msg });
+      // Changed status to "closed" so it disappears from pending active list as requested
+      onUpdateTicket(id, { status: "closed", adminReply: msg });
       
       // Notification for ticket reply
       import("firebase/firestore").then(async ({ collection, addDoc, serverTimestamp }) => {
         const { db } = await import("../lib/firebase");
         await addDoc(collection(db, "notifications"), {
           userId: userId,
-          title: "رد جديد على تذكرة الدعم 💬",
-          msg: `وصلك رد جديد من الإدارة على تذكرتك: ${msg.substring(0, 30)}...`,
+          title: "تم الرد على تذكرتك 💬",
+          msg: `المدير رد عليك: ${msg}`,
           time: "الآن",
           type: "support",
           read: false,
@@ -170,11 +165,16 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
   };
 
   const handleReject = (id: string) => {
-    if (confirm("هل أنت متأكد من حذف/رفض هذا الطلب؟") && onUpdateOrder) {
-      // In a real app we might delete, but here we just mark as rejected
-      onUpdateOrder(id, { status: "rejected", stage: 0 });
+    if (confirm("هل أنت متأكد من حذف/رفض هذا الطلب نهائياً؟") && onUpdateOrder) {
+      // Changed stage to 3 and status to rejected to ensure it disappears from active view
+      onUpdateOrder(id, { status: "rejected", stage: 3 });
     }
   };
+
+  // Improved filtering logic to ensure items disappear immediately after processing
+  const activeOrders = regularOrders.filter(o => o.status === "active" && o.stage !== 3);
+  const pendingTopups = depositRequests.filter(r => r.status === "pending");
+  const pendingTickets = tickets.filter(s => s.status === "open");
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, paddingBottom: 120 }}>
@@ -195,7 +195,7 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
         </div>
         <div style={{ background: T.surface, padding: 15, borderRadius: 20, border: `1px solid ${T.border}` }}>
           <div style={{ fontSize: 10, color: T.sub, marginBottom: 5 }}>الطلبات الجديدة</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: T.orange }}>{regularOrders.filter(o => o.stage < 3).length}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: T.orange }}>{activeOrders.length + pendingTopups.length + pendingTickets.length}</div>
         </div>
       </div>
 
@@ -206,19 +206,28 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
           { id: "orders", l: "الطلبات", i: "📦" },
           { id: "topups", l: "الشحن", i: "💰" },
           { id: "support", l: "الدعم", i: "💬" }
-        ].map(t => (
-          <button 
-            key={t.id}
-            onClick={() => setTab(t.id as AdminTab)}
-            style={{ 
-              padding: "10px 16px", borderRadius: 14, whiteSpace: "nowrap", border: "none", fontSize: 12, fontWeight: 800,
-              background: tab === t.id ? T.accent : T.surface,
-              color: tab === t.id ? "white" : T.sub
-            }}
-          >
-            {t.i} {t.l}
-          </button>
-        ))}
+        ].map(t => {
+          const count = t.id === "orders" ? activeOrders.length : t.id === "topups" ? pendingTopups.length : t.id === "support" ? pendingTickets.length : 0;
+          return (
+            <button 
+              key={t.id}
+              onClick={() => setTab(t.id as AdminTab)}
+              style={{ 
+                padding: "10px 16px", borderRadius: 14, whiteSpace: "nowrap", border: "none", fontSize: 12, fontWeight: 800,
+                background: tab === t.id ? T.accent : T.surface,
+                color: tab === t.id ? "white" : T.sub,
+                position: "relative"
+              }}
+            >
+              {t.i} {t.l}
+              {count > 0 && (
+                <span style={{ position: "absolute", top: -5, right: -5, background: T.red, color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, border: `2px solid ${T.bg}` }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Content */}
@@ -281,7 +290,13 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
           {tab === "orders" && (
             <motion.div key="orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {regularOrders.map(o => (
+                {activeOrders.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: T.sub }}>
+                    <div style={{ fontSize: 40, marginBottom: 15 }}>📦</div>
+                    <div style={{ fontSize: 16, fontWeight: 800 }}>لا توجد طلبات نشطة</div>
+                    <div style={{ fontSize: 12, color: T.sub }}>كل الطلبات تمت معالجتها بنجاح</div>
+                  </div>
+                ) : activeOrders.map(o => (
                   <div key={o.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 18 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                       <div style={{ fontSize: 12, fontWeight: 900, color: T.sub }}>{o.id}</div>
@@ -335,14 +350,14 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
           {tab === "topups" && (
             <motion.div key="topups" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                 {depositRequests.filter(r => r.status === "pending").length === 0 ? (
+                 {pendingTopups.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "40px 0" }}>
-                      <div style={{ fontSize: 40, marginBottom: 15 }}>🏗️</div>
+                      <div style={{ fontSize: 40, marginBottom: 15 }}>💰</div>
                       <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 5 }}>طلبات الشحن</div>
                       <div style={{ fontSize: 12, color: T.sub }}>لا توجد طلبات معلقة حالياً</div>
                     </div>
                  ) : (
-                   depositRequests.filter(r => r.status === "pending").map(req => (
+                   pendingTopups.map(req => (
                      <div key={req.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 18 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                           <div style={{ fontSize: 14, fontWeight: 900, color: T.green }}>شحن: £{req.amount}</div>
@@ -375,10 +390,14 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
           {tab === "support" && (
             <motion.div key="support" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {tickets.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "40px 0", color: T.sub }}>لا توجد تذاكر دعم حالياً</div>
+                {pendingTickets.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: T.sub }}>
+                    <div style={{ fontSize: 40, marginBottom: 15 }}>💬</div>
+                    <div style={{ fontSize: 16, fontWeight: 800 }}>لا توجد تذاكر دعم نشطة</div>
+                    <div style={{ fontSize: 12, color: T.sub }}>تم الرد على جميع التذاكر</div>
+                  </div>
                 ) : (
-                  tickets.map(s => (
+                  pendingTickets.map(s => (
                     <div key={s.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 18 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 900 }}>{s.subject}</div>
@@ -398,6 +417,7 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
               </div>
             </motion.div>
           )}
+
         </AnimatePresence>
       </div>
     </div>

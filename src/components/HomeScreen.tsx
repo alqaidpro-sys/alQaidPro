@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { G, SERVICES_DATA } from "../data";
+import { ModernWalletCard } from "./Shared";
 
 interface ServiceItem {
   id: string;
@@ -23,8 +24,14 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
   const displayName = userData?.name || "المستخدم";
   const displayRank = userData?.rank === "vip" ? "عضو VIP ✨" : userData?.rank === "pro" ? "عضو مميز ⚡" : "عضو عادي";
 
-  const totalIn = transactions.filter(t => t.type === "TOPUP" && t.status === "completed").reduce((a, t) => a + Number(String(t.amount || "0").replace(/\D/g, "") || 0), 0);
-  const totalOut = transactions.filter(t => t.type !== "TOPUP" && t.status === "completed").reduce((a, t) => a + Number(String(t.amount || "0").replace(/\D/g, "") || 0), 0);
+  const totalIn = transactions.filter(t => t.type === "TOPUP" && t.status === "completed").reduce((a, t) => {
+    const val = t.amountValue !== undefined ? t.amountValue : Number(String(t.amount || "0").replace(/[^\d.]/g, "") || 0);
+    return a + val;
+  }, 0);
+  const totalOut = transactions.filter(t => t.type !== "TOPUP" && (t.status === "completed" || t.status === "active" || t.status === "processing")).reduce((a, t) => {
+    const val = t.amountValue !== undefined ? t.amountValue : Number(String(t.amount || "0").replace(/[^\d.]/g, "") || 0);
+    return a + val;
+  }, 0);
   const points = Math.floor(totalOut / 10);
 
   const recentActivity = transactions.slice(0, 3).map((t, i) => ({
@@ -74,61 +81,14 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
       </div>
 
       {/* Premium Wallet Display (Exact Wallet style) */}
-      <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 20 }}>
-        <div style={{
-          background: "linear-gradient(135deg,rgba(79,142,247,.08),rgba(14,217,160,.04))",
-          border: "1px solid rgba(79,142,247,.22)",
-          borderRadius: 20,
-          padding: 18,
-          backdropFilter: "blur(20px)",
-          boxShadow: "0 15px 30px rgba(0,0,0,0.25)",
-          position: "relative",
-          overflow: "hidden"
-        }}>
-          {/* Subtle Glows */}
-          <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, background: "rgba(79,142,247,0.1)", borderRadius: "50%", filter: "blur(30px)" }} />
-          
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 10, color: G.sub, marginBottom: 3, fontFamily: G.font }}>الرصيد المتاح</div>
-              <div style={{ fontSize: 30, fontWeight: 900, color: G.text, direction: "ltr", display: "flex", alignItems: "baseline", gap: 3, justifyContent: "flex-end" }}>
-                <span style={{ fontSize: 30 }}>{balance.toLocaleString()}</span>
-                <span style={{ fontSize: 18, color: G.blue, fontWeight: 900 }}>£</span>
-              </div>
-              <div style={{ fontSize: 9, color: G.sub, marginTop: 2, fontFamily: G.font }}>جنيه مصري</div>
-            </div>
-            <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 9, color: G.sub, marginBottom: 3, fontFamily: G.font }}>نقاط المكافآت</div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#FBBF24" }}>⭐ {points.toLocaleString()}</div>
-              <div style={{ fontSize: 8, color: G.sub, fontFamily: G.font }}>= £{(points / 10).toFixed(0)} خصم</div>
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, background: "rgba(0,0,0,.25)", borderRadius: 14, padding: "12px 10px", marginBottom: 16 }}>
-            {[
-              { l: "إجمالي الشحن", v: `£${totalIn.toLocaleString()}`, i: "⬆️" },
-              { l: "إجمالي المصروف", v: `£${totalOut.toLocaleString()}`, i: "⬇️" },
-              { l: "قيمة النقاط", v: `£${(points / 10).toFixed(0)}`, i: "💎" }
-            ].map((st, i) => (
-              <div key={i} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 14, marginBottom: 2 }}>{st.i}</div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: G.text }}>{st.v}</div>
-                <div style={{ fontSize: 8, color: G.sub, fontFamily: G.font }}>{st.l}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="tap" onClick={() => setTab("wallet")} style={{
-              flex: 1, background: G.blue, padding: "10px", borderRadius: 12, color: "white", fontSize: 12, fontWeight: 800, border: "none", fontFamily: G.font,
-              boxShadow: "0 6px 16px rgba(59,142,247,0.25)"
-            }}>شحن الرصيد</button>
-            <button className="tap" onClick={() => setTab("services")} style={{
-              flex: 1, background: "rgba(255,255,255,0.05)", padding: "10px", borderRadius: 12, color: G.text, fontSize: 12, fontWeight: 800, border: "1px solid rgba(255,255,255,0.08)", fontFamily: G.font
-            }}>تحويل أموال</button>
-          </div>
-        </div>
-      </div>
+      <ModernWalletCard 
+        balance={balance} 
+        points={points} 
+        totalIn={totalIn} 
+        totalOut={totalOut} 
+        onTopup={() => setTab("wallet")}
+        onTransfer={() => setTab("services")}
+      />
 
       {/* Wide News Ticker */}
       <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 20, animationDelay: "0.1s" }}>

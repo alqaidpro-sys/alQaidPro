@@ -17,7 +17,7 @@ const SAMPLE_TRANSACTIONS = [
   { id: "TX-11029", name: "مشتريات Temu Logistics", date: "منذ يومين", amount: "£8,400", icon: "🛍️", color: "#f97316", type: "TOPUP", status: "review", stage: 0 },
 ];
 
-export function HistoryScreen({ onBack, transactions = [] }: { onBack: () => void, transactions?: any[] }) {
+export function HistoryScreen({ onBack, transactions = [], onSetTab }: { onBack: () => void, transactions?: any[], onSetTab?: (tab: string) => void }) {
   const [filter, setFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
@@ -204,6 +204,36 @@ export function HistoryScreen({ onBack, transactions = [] }: { onBack: () => voi
                   <span style={{ fontSize: 12, color: G.sub, fontFamily: G.font }}>وقت الطلب</span>
                   <span style={{ fontSize: 12, color: G.text, fontFamily: G.font }}>{selectedOrder.date}</span>
                </div>
+            </div>
+
+            {/* Support Actions */}
+            <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <button onClick={() => window.open(`https://wa.me/201001900618?text=استفسار بخصوص الطلب ${selectedOrder.id}`)} className="tap" style={{
+                     padding: "12px", borderRadius: 14, background: "#25D36620", border: "1px solid #25D36640",
+                     color: "#25D366", fontSize: 12, fontWeight: 800, fontFamily: G.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+                  }}>
+                     <span>💬</span>
+                     تواصل مباشر
+                  </button>
+                  <button onClick={() => window.open(`mailto:support@alqaidpro.com?subject=استفسار بخصوص الطلب ${selectedOrder.id}`)} className="tap" style={{
+                     padding: "12px", borderRadius: 14, background: "#3b82f620", border: "1px solid #3b82f640",
+                     color: "#3b82f6", fontSize: 12, fontWeight: 800, fontFamily: G.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+                  }}>
+                     <span>✉️</span>
+                     مراسلة بريدية
+                  </button>
+               </div>
+               
+               {onSetTab && (
+                 <button onClick={() => { onSetTab("support"); setSelectedOrder(null); }} className="tap" style={{
+                    padding: "12px", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)",
+                    color: G.text, fontSize: 12, fontWeight: 800, fontFamily: G.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+                 }}>
+                    <span>🎫</span>
+                    فتح تذكرة دعم لهذا الطلب
+                 </button>
+               )}
             </div>
 
             <button onClick={() => setSelectedOrder(null)} className="tap" style={{
