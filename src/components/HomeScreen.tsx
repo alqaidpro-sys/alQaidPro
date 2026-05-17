@@ -22,7 +22,7 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
   const [showNotifs, setShowNotifs] = useState(false);
 
   const displayName = userData?.name || "المستخدم";
-  const displayRank = userData?.rank === "vip" ? "عضو VIP ✨" : userData?.rank === "pro" ? "عضو مميز ⚡" : "عضو عادي";
+  const displayRank = userData?.rank === "VIP" ? "عضو VIP ✨" : userData?.rank === "مميز" ? "عضو مميز ⚡" : "عضو عادي";
 
   const totalIn = transactions.filter(t => t.type === "TOPUP" && t.status === "completed").reduce((a, t) => {
     const val = t.amountValue !== undefined ? t.amountValue : Number(String(t.amount || "0").replace(/[^\d.]/g, "") || 0);
