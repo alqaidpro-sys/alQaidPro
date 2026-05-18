@@ -191,3 +191,58 @@ export function AnnouncementModal({ onClose }: { onClose: () => void }) {
     </motion.div>
   );
 }
+
+export function DirectMessageModal({ msg, onClose }: { msg: string, onClose: () => void }) {
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      exit={{ opacity: 0 }}
+      style={{
+        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+        background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        zIndex: 2500, padding: 25
+      }}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }} 
+        animate={{ scale: 1, y: 0 }}
+        style={{
+          background: "linear-gradient(135deg, #111827, #030712)",
+          border: "1px solid #3b82f6",
+          borderRadius: 32, padding: 30, width: "100%", maxWidth: 400,
+          textAlign: "center", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+          position: "relative"
+        }}
+      >
+        <div style={{ fontSize: 48, marginBottom: 20 }}>📢</div>
+        <h2 style={{ fontSize: 20, fontWeight: 900, color: "white", marginBottom: 15, fontFamily: G.font }}>رسالة من الإدارة</h2>
+        
+        <div style={{ 
+          fontSize: 14, color: "rgba(255,255,255,0.9)", 
+          lineHeight: 1.8, marginBottom: 30, fontWeight: 600, 
+          fontFamily: G.font, textAlign: "right",
+          background: "rgba(255,255,255,0.03)", padding: 15, borderRadius: 16, 
+          border: "1px solid rgba(255,255,255,0.05)",
+          whiteSpace: "pre-line"
+        }}>
+          {msg}
+        </div>
+
+        <button 
+          className="tap"
+          onClick={onClose}
+          style={{
+            width: "100%", padding: "16px", borderRadius: 18,
+            background: "#3b82f6", color: "white", border: "none",
+            fontSize: 16, fontWeight: 900, fontFamily: G.font,
+            boxShadow: "0 10px 25px rgba(59,130,246,0.4)"
+          }}
+        >
+          تم الاستلام ✅
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}

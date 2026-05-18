@@ -14,7 +14,8 @@ const C = {
 export default function RealAIPage({ onBack, initialTool }: any) {
   const [tool, setTool] = useState(initialTool || "img");
   const [input, setInput] = useState("");
-  const [output, setOutput] = useState<string | null>(null);
+  const [output, setOutput] = useState<any>(null);
+  const [isImageResult, setIsImageResult] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,13 +46,15 @@ export default function RealAIPage({ onBack, initialTool }: any) {
       const data = await res.json();
       if (!res.ok) {
         // Handle Gemini Quota and other errors gracefully
-        if (data.error?.includes("429") || data.error?.includes("quota")) {
-          throw new Error("عذراً، وصلنا للحد الأقصى للطلبات المجانية حالياً. يرجى المحاولة لاحقاً.");
+        const errMsg = data.error || "حدث خطأ غير متوقع";
+        if (errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("RESOURCE_EXHAUSTED")) {
+          throw new Error("عذراً، وصلنا للحد الأقصى للطلبات المجانية حالياً. يرجى المحاولة بعد دقائق.");
         }
-        throw new Error(data.error || "حدث خطأ غير متوقع");
+        throw new Error(errMsg);
       }
       
       setOutput(data.result);
+      setIsImageResult(!!data.isImage);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -111,6 +114,22 @@ export default function RealAIPage({ onBack, initialTool }: any) {
             }}
           />
 
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+             {tool === "img" ? (
+               ["سيارة سباق مستقبلية", "منزل في الغابة", "رائد فضاء"].map(ex => (
+                 <div key={ex} onClick={() => setInput(ex)} className="tap" style={{ fontSize: 10, background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: 20, color: C.sub }}>{ex}</div>
+               ))
+             ) : tool === "summ" ? (
+               ["كتابة مقال عن التكنولوجيا", "تلخيص قصة قصيرة", "شرح ميكانيكا الكم"].map(ex => (
+                 <div key={ex} onClick={() => setInput(ex)} className="tap" style={{ fontSize: 10, background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: 20, color: C.sub }}>{ex}</div>
+               ))
+             ) : (
+               ["فكرة محتوى تيك توك", "رسالة تسويقية", "كود بلغة بايثون"].map(ex => (
+                 <div key={ex} onClick={() => setInput(ex)} className="tap" style={{ fontSize: 10, background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: 20, color: C.sub }}>{ex}</div>
+               ))
+             )}
+          </div>
+
           <button 
             className="tap"
             onClick={handleProcess}
@@ -144,7 +163,7 @@ export default function RealAIPage({ onBack, initialTool }: any) {
               </div>
             ) : output ? (
               <div style={{ animation: "pop 0.4s ease" }}>
-                {tool === "img" ? (
+                {isImageResult ? (
                   <img 
                     src={output} 
                     alt="AI Result" 
@@ -162,8 +181,13 @@ export default function RealAIPage({ onBack, initialTool }: any) {
                 <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                   <button onClick={() => {
                     navigator.clipboard.writeText(output);
-                    alert("تم النسخ!");
-                  }} className="tap" style={{ flex: 1, padding: 10, borderRadius: 10, background: "rgba(255,255,255,0.03)", color: "white", fontSize: 11, border: `1px solid ${C.border}`, fontWeight: 800 }}>نسخ</button>
+                    const b = document.getElementById("copy-ai");
+                    if (b) {
+                      const old = b.innerText;
+                      b.innerText = "تم النسخ! ✅";
+                      setTimeout(() => b.innerText = old, 1500);
+                    }
+                  }} id="copy-ai" className="tap" style={{ flex: 1, padding: 10, borderRadius: 10, background: "rgba(255,255,255,0.03)", color: "white", fontSize: 11, border: `1px solid ${C.border}`, fontWeight: 800 }}>نسخ</button>
                   <button onClick={() => setOutput(null)} className="tap" style={{ flex: 1, padding: 10, borderRadius: 10, background: "rgba(255,255,255,0.03)", color: "white", fontSize: 11, border: `1px solid ${C.border}`, fontWeight: 800 }}>جديد</button>
                 </div>
               </div>

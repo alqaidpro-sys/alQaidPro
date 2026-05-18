@@ -64,7 +64,7 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow get: if isOwner(existing().userId) || isAdmin();
       allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isSignedIn() && isValidOrder(incoming());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidOrder(incoming());
       allow update: if isAdmin();
     }
 

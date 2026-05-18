@@ -1,5 +1,5 @@
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { collection, addDoc, updateDoc, doc, increment, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc, increment, serverTimestamp, getDoc } from "firebase/firestore";
 
 export interface PurchaseDetails {
   serviceId: string;
@@ -15,6 +15,14 @@ export async function processPurchase({ serviceId, serviceName, icon, color, amo
   if (!auth.currentUser) throw new Error("يجب تسجيل الدخول أولاً");
 
   try {
+    // 0. Check balance first
+    const userRef = doc(db, "users", auth.currentUser.uid);
+    const userSnap = await getDoc(userRef);
+    const currentBalance = userSnap.data()?.balance || 0;
+    if (currentBalance < amount) {
+      throw new Error(`عذراً، رصيدك الحالي (£${currentBalance}) لا يكفي لإتمام الطلب (£${amount})`);
+    }
+
     // 1. Create order record
     const orderRef = await addDoc(collection(db, "orders"), {
       name: serviceName,
@@ -32,7 +40,6 @@ export async function processPurchase({ serviceId, serviceName, icon, color, amo
     });
 
     // 2. Update user balance
-    const userRef = doc(db, "users", auth.currentUser.uid);
     await updateDoc(userRef, {
       balance: increment(-amount),
       updatedAt: serverTimestamp()
@@ -49,6 +56,14 @@ export async function processCartCheckout(items: any[], total: number) {
   if (!auth.currentUser) throw new Error("يجب تسجيل الدخول أولاً");
 
   try {
+    // 0. Check balance first
+    const userRef = doc(db, "users", auth.currentUser.uid);
+    const userSnap = await getDoc(userRef);
+    const currentBalance = userSnap.data()?.balance || 0;
+    if (currentBalance < total) {
+      throw new Error(`عذراً، رصيدك (£${currentBalance}) لا يكفي لإتمام الطلبات (£${total})`);
+    }
+
     // 1. Create orders for each item
     const results = await Promise.all(items.map(item => {
       const price = (item.price || item.total || 0);
@@ -69,7 +84,6 @@ export async function processCartCheckout(items: any[], total: number) {
     }));
 
     // 2. Update user balance once
-    const userRef = doc(db, "users", auth.currentUser.uid);
     await updateDoc(userRef, {
       balance: increment(-total),
       updatedAt: serverTimestamp()

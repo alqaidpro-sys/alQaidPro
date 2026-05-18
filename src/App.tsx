@@ -15,7 +15,7 @@ import { ServiceDetailScreen } from "./components/ServiceDetailScreen";
 import { CartScreen } from "./components/CartScreen";
 import { BottomNav } from "./components/BottomNav";
 import { SupportScreen } from "./components/SupportScreen";
-import { AnnouncementModal } from "./components/Shared";
+import { AnnouncementModal, DirectMessageModal } from "./components/Shared";
 
 // Firebase
 import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
@@ -61,6 +61,30 @@ export default function App() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const [pendingPopup, setPendingPopup] = useState<any>(null);
+
+  useEffect(() => {
+    // Look for unread popup notifications
+    const popup = notifications.find(n => n.isPopup === true && n.read === false);
+    if (popup && (!pendingPopup || pendingPopup.id !== popup.id)) {
+      setPendingPopup(popup);
+    }
+  }, [notifications, pendingPopup]);
+
+  const handleClosePopup = async () => {
+    if (!pendingPopup) return;
+    try {
+      await updateDoc(doc(db, "notifications", pendingPopup.id), {
+        read: true,
+        isPopup: false
+      });
+      setPendingPopup(null);
+    } catch (err) {
+      console.error("Error closing popup:", err);
+      // Fallback
+      setPendingPopup(null);
+    }
+  };
 
   useEffect(() => {
     // Show announcement on first load of the app after auth is determined
@@ -321,6 +345,12 @@ export default function App() {
       <>
         <AnimatePresence>
           {showAnnouncement && <AnnouncementModal onClose={() => setShowAnnouncement(false)} />}
+          {pendingPopup && (
+            <DirectMessageModal 
+              msg={pendingPopup.msg} 
+              onClose={handleClosePopup} 
+            />
+          )}
         </AnimatePresence>
 
         <AnimatePresence mode="wait">

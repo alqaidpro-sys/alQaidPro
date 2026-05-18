@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { processPurchase } from "../services/purchaseService";
 
 const C = {
   bg:      "#050810",
@@ -166,15 +167,33 @@ export default function TVSubsPage({ balance=5000, setBalance, onBack=()=>{}, on
 
   const reset = () => { setSel(null); setPlan(null); setEmail(""); setErr(""); setDone(false); setShowAdded(false); };
 
-  const buy = () => {
+  const buy = async () => {
     if (!email.trim()) { setErr("يرجى إدخال " + svc?.emailLabel); return; }
     if (!selPlan)      { setErr("يرجى اختيار مدة الاشتراك"); return; }
-    if (!canBuy)       { setErr("رصيدك غير كافٍ — اشحن المحفظة أولاً"); return; }
-    setErr(""); setLoading(true);
-    setTimeout(() => {
-      if (setBalance && selPlan) setBalance((b: number) => b - (selPlan.egp || 0));
-      setLoading(false); setDone(true);
-    }, 1800);
+    if (balance < (selPlan.egp || 0)) { setErr("رصيدك غير كافٍ — اشحن المحفظة أولاً"); return; }
+    
+    setErr(""); 
+    setLoading(true);
+    try {
+      if (!svc || !selPlan) return;
+      await processPurchase({
+        serviceId: svc.id,
+        serviceName: svc.name,
+        icon: svc.icon,
+        color: svc.color,
+        amount: selPlan.egp || 0,
+        details: {
+          email,
+          plan: selPlan.n,
+          type: "TV_SUBSCRIPTION"
+        }
+      });
+      setDone(true);
+    } catch (err: any) {
+      setErr(err.message || "حدث خطأ أثناء إتمام الطلب");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addToCartInternal = () => {

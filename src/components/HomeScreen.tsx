@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { G, SERVICES_DATA } from "../data";
+import { useState, useEffect } from "react";
+import { G } from "../data";
 import { ModernWalletCard } from "./Shared";
+import { db } from "../lib/firebase";
+import { collection, query, where, onSnapshot, orderBy, limit, updateDoc, doc } from "firebase/firestore";
 
 interface ServiceItem {
   id: string;
