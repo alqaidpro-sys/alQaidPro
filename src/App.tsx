@@ -268,19 +268,28 @@ export default function App() {
       setNotifications(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     }, (err) => handleFirestoreError(err, OperationType.LIST, "notifications"));
 
-    // Global recent completed orders for social proof (last 10)
-    const qGlobalRecent = query(collection(db, "orders"), where("status", "==", "completed"), orderBy("createdAt", "desc"), limit(10));
+    // Global recent completed orders for social proof (fetched safely and sorted in-memory to prevent composite index requirement)
+    const qGlobalRecent = query(collection(db, "orders"), where("status", "==", "completed"), limit(50));
     const unsubGlobalRecent = onSnapshot(qGlobalRecent, (snap) => {
-      setGlobalRecentOrders(snap.docs.map(doc => ({ 
-        id: doc.id, 
-        name: doc.data().name || doc.data().service,
-        amount: doc.data().amount,
-        createdAt: doc.data().createdAt,
-        serviceIcon: doc.data().icon || "📦"
-      })));
+      const orders = snap.docs.map(doc => {
+        const d = doc.data();
+        return { 
+          id: doc.id, 
+          name: d.name || d.service || "طلب مكتمل",
+          amount: d.amount,
+          createdAt: d.createdAt,
+          completedAt: d.completedAt,
+          serviceIcon: d.icon || "📦"
+        };
+      });
+      // Sort in-memory by completedAt or createdAt desc to always show newest completed orders
+      orders.sort((a: any, b: any) => {
+        const timeA = a.completedAt?.seconds || a.createdAt?.seconds || 0;
+        const timeB = b.completedAt?.seconds || b.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+      setGlobalRecentOrders(orders.slice(0, 10));
     }, (err) => {
-      // Potentially silence this if it's a permission issue for non-auth users, 
-      // but here they are authed.
       console.warn("Global recent orders snapshot error:", err);
     });
 
@@ -300,7 +309,12 @@ export default function App() {
       const snap = await getDoc(orderRef);
       const currentData = snap.data();
       
-      await updateDoc(orderRef, updates);
+      const enrichedUpdates = { ...updates };
+      if (updates.status === "completed" && currentData?.status !== "completed") {
+        enrichedUpdates.completedAt = serverTimestamp();
+      }
+
+      await updateDoc(orderRef, enrichedUpdates);
       
       if (updates.status === "completed" && currentData?.status !== "completed") {
         const rawAmount = currentData?.amountValue ?? currentData?.amount;

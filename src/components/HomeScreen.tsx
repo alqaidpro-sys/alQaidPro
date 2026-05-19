@@ -57,15 +57,6 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
   }, 0);
   const points = userData?.rewardPoints || 0;
 
-  const recentActivity = transactions.slice(0, 3).map((t, i) => ({
-    id: t.id,
-    title: t.name,
-    price: (t.type === "TOPUP" ? "+ " : "- ") + t.amount,
-    time: t.date || "اليوم",
-    icon: t.icon || "📦",
-    color: t.color || "#3b82f6"
-  }));
-
   return (
     <div style={{ paddingBottom: 110 }}>
       {/* Top Profile Header */}
@@ -165,7 +156,7 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
       <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 24, animationDelay: "0.3s" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ fontSize: 10, color: "#10b981", fontWeight: 800, background: "rgba(16,185,129,0.1)", padding: "2px 8px", borderRadius: 8 }}>مباشر 🟢</div>
-          <div style={{ fontSize: 14, fontWeight: 900, color: G.text, fontFamily: G.font }}>آخر 10 طلبات منفذة</div>
+          <div style={{ fontSize: 13, fontWeight: 900, color: G.text, fontFamily: G.font }}>آخر 10 طلبات منفذة</div>
         </div>
         <div style={{ background: "#0f172a", borderRadius: 24, border: "1px solid rgba(255,255,255,0.03)", overflow: "hidden" }}>
           {(!globalRecentOrders || globalRecentOrders.length === 0) ? (
@@ -183,39 +174,15 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
                   </div>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: G.text }}>{o.name}</div>
-                    <div style={{ fontSize: 9, color: G.sub }}>{o.createdAt?.toDate ? o.createdAt.toDate().toLocaleTimeString("ar-EG", {hour:'2-digit', minute:'2-digit'}) : "الآن"}</div>
+                    <div style={{ fontSize: 9, color: G.sub, marginTop: 2 }}>
+                      {o.completedAt?.toDate ? o.completedAt.toDate().toLocaleTimeString("ar-EG", {hour:'2-digit', minute:'2-digit'}) : (o.createdAt?.toDate ? o.createdAt.toDate().toLocaleTimeString("ar-EG", {hour:'2-digit', minute:'2-digit'}) : "الآن")}
+                    </div>
                   </div>
                 </div>
                 <div style={{ fontSize: 10, fontWeight: 900, color: "#10b981", background: "rgba(16,185,129,0.1)", padding: "2px 8px", borderRadius: 6 }}>مكتمل ✅</div>
               </div>
             ))
           )}
-        </div>
-      </div>
-
-      {/* Activity Summary */}
-      <div style={{ padding: "0 20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ fontSize: 11, color: G.blue, fontWeight: 800, fontFamily: G.font }}>عرض الكل</div>
-          <div style={{ fontSize: 14, fontWeight: 900, color: G.text, fontFamily: G.font }}>آخر النشاطات</div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {recentActivity.map((item, idx) => (
-            <div key={item.id || idx} className="fadeUp" style={{ 
-              background: "#0f172a", border: "1px solid rgba(255,255,255,0.03)", borderRadius: 14, padding: "10px 14px",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              animationDelay: `${0.3 + idx * 0.1}s`
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 10, background: `${item.color}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{item.icon}</div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: G.text, fontFamily: G.font }}>{item.title}</div>
-                  <div style={{ fontSize: 9, color: G.sub, fontFamily: G.font }}>{item.time}</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 900, color: item.price.startsWith("+") ? "#10b981" : G.text, direction: "ltr" }}>{item.price}</div>
-            </div>
-          ))}
         </div>
       </div>
 
