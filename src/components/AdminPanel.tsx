@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { G } from "../data";
-import { increment, runTransaction, doc, collection, addDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { increment, runTransaction, doc, collection, addDoc, serverTimestamp, updateDoc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
 const T = {
@@ -17,7 +17,7 @@ const T = {
   font: "Cairo, sans-serif"
 };
 
-type AdminTab = "users" | "orders" | "topups" | "support" | "history";
+type AdminTab = "users" | "orders" | "topups" | "support" | "history" | "settings";
 
 export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUpdateOrder, tickets = [], onUpdateTicket, depositRequests = [] }: { 
   onBack: () => void, 
@@ -32,6 +32,24 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
   const [tab, setTab] = useState<AdminTab>("users");
   const [submitting, setSubmitting] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [tickers, setTickers] = useState({ top: "", bottom: "" });
+
+  useEffect(() => {
+    if (tab === "settings") {
+      const fetchTickers = async () => {
+        try {
+          const snap = await getDoc(doc(db, "configs", "tickers"));
+          if (snap.exists()) {
+            const d = snap.data();
+            setTickers({ top: d.top || "", bottom: d.bottom || "" });
+          }
+        } catch (err) {
+          console.error("Error fetching tickers:", err);
+        }
+      };
+      fetchTickers();
+    }
+  }, [tab]);
   
   // Custom Modal State
   const [modalType, setModalType] = useState<"message" | "reject" | "balance" | "reply" | null>(null);
@@ -75,18 +93,21 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
           approvedAt: serverTimestamp() 
         });
 
-        // 2. Increment user balance
+        // 2. Increment user balance and add reward points (1 point for every 10 EGP)
+        const pointsToAdd = Math.floor(amount / 10);
         transaction.update(userRef, {
           balance: increment(amount),
-          totalTopup: increment(amount)
+          totalTopup: increment(amount),
+          rewardPoints: increment(pointsToAdd)
         });
       });
 
       // Send notification
+      const pointsAdded = Math.floor(amount / 10);
       await addDoc(collection(db, "notifications"), {
         userId: req.userId,
         title: "تم شحن رصيدك بنجاح ✅",
-        msg: "شكراً لك! تم قبول طلب الشحن وإضافة الرصيد إلى محفظتك بنجاح. رصيد مميز مع القائد! 🚀",
+        msg: `شكراً لك! تم قبول طلب الشحن وإضافة مبلغ £${amount} لمحفظتك، كما حصلت على ${pointsAdded} نقطة مكافأة! 🚀`,
         time: "الآن",
         type: "wallet",
         read: false,
@@ -161,7 +182,11 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
 
   const handleUpdateBalance = (uid: string, amt: number) => {
     if (onUpdateUser) {
-      onUpdateUser(uid, { balance: increment(amt) });
+      const updates: any = { balance: increment(amt) };
+      if (amt > 0) {
+        updates.rewardPoints = increment(Math.floor(amt / 10));
+      }
+      onUpdateUser(uid, updates);
     }
   };
 
@@ -214,6 +239,22 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
     } catch (err) {
       console.error("Error rejecting order:", err);
       alert("حدث خطأ أثناء عملية الرفض والاسترداد");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveTickers = async () => {
+    setSubmitting(true);
+    try {
+      await setDoc(doc(db, "configs", "tickers"), {
+        top: tickers.top,
+        bottom: tickers.bottom,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      alert("✅ تم حفظ إعدادات شرائط الأخبار بنجاح");
+    } catch (err) {
+      alert("❌ فشل حفظ الإعدادات");
     } finally {
       setSubmitting(false);
     }
@@ -281,7 +322,8 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
           { id: "orders", l: "الطلبات النشطة", i: "⚡" },
           { id: "history", l: "سجل الطلبات", i: "📜" },
           { id: "topups", l: "الشحن", i: "💰" },
-          { id: "support", l: "الدعم", i: "💬" }
+          { id: "support", l: "الدعم", i: "💬" },
+          { id: "settings", l: "الإعدادات", i: "⚙️" }
         ].map(t => {
           const count = t.id === "orders" ? activeOrders.length : t.id === "topups" ? pendingTopups.length : t.id === "support" ? pendingTickets.length : 0;
           return (
@@ -309,6 +351,46 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
       {/* Content */}
       <div style={{ padding: "0 20px" }}>
         <AnimatePresence mode="wait">
+          {tab === "settings" && (
+            <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 24, padding: 25 }}>
+                <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 20 }}>تعديل شرائط الأخبار 📢</div>
+                
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: T.sub, display: "block", marginBottom: 8 }}>شريط الأخبار العلوي (المتحرك)</label>
+                  <textarea 
+                    value={tickers.top}
+                    onChange={(e) => setTickers({...tickers, top: e.target.value})}
+                    placeholder="اكتب الخبر هنا (سيظهر فوق الرصيد)..."
+                    rows={3}
+                    style={{ width: "100%", padding: 15, borderRadius: 14, background: T.bg, border: `1px solid ${T.border}`, color: "white", fontSize: 13, outline: "none", resize: "none" }}
+                  />
+                  <div style={{ fontSize: 10, color: T.sub, marginTop: 5 }}>* هذا الشريط يظهر في جميع الصفحات فوق بطاقة المحفظة.</div>
+                </div>
+
+                <div style={{ marginBottom: 25 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: T.sub, display: "block", marginBottom: 8 }}>شريط الأخبار السفلي (الثابت)</label>
+                  <textarea 
+                    value={tickers.bottom}
+                    onChange={(e) => setTickers({...tickers, bottom: e.target.value})}
+                    placeholder="اكتب الخبر هنا (سيظهر تحت الرصيد)..."
+                    rows={3}
+                    style={{ width: "100%", padding: 15, borderRadius: 14, background: T.bg, border: `1px solid ${T.border}`, color: "white", fontSize: 13, outline: "none", resize: "none" }}
+                  />
+                  <div style={{ fontSize: 10, color: T.sub, marginTop: 5 }}>* هذا الشريط يظهر تحت بطاقة المحفظة في الصفحة الرئيسية.</div>
+                </div>
+
+                <button 
+                  onClick={handleSaveTickers}
+                  disabled={submitting}
+                  style={{ width: "100%", padding: 15, borderRadius: 14, background: T.accent, color: "white", fontWeight: 900, border: "none", fontSize: 15, opacity: submitting ? 0.6 : 1 }}
+                >
+                  {submitting ? "جاري الحفظ..." : "حفظ الإعدادات ✅"}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {tab === "users" && (
             <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

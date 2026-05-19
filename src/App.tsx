@@ -15,7 +15,7 @@ import { ServiceDetailScreen } from "./components/ServiceDetailScreen";
 import { CartScreen } from "./components/CartScreen";
 import { BottomNav } from "./components/BottomNav";
 import { SupportScreen } from "./components/SupportScreen";
-import { AnnouncementModal, DirectMessageModal } from "./components/Shared";
+import { AnnouncementModal, DirectMessageModal, AdBanner } from "./components/Shared";
 
 // Firebase
 import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
@@ -62,6 +62,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [pendingPopup, setPendingPopup] = useState<any>(null);
+  const [tickerSettings, setTickerSettings] = useState({ top: "", bottom: "" });
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "configs", "tickers"), (snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        setTickerSettings({ top: d.top || "", bottom: d.bottom || "" });
+      }
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     // Look for unread popup notifications
@@ -300,10 +311,11 @@ export default function App() {
           userData={userData}
           transactions={allTransactions}
           notifications={notifications}
+          tickerSettings={tickerSettings}
         />
       ),
       "services": <ServicesScreen setServiceDetail={setServiceDetail} setTab={handleSetTab} cartCount={cart.length} />,
-      "wallet": <WalletPage balance={balance} setBalance={updateBalance} onBack={() => handleSetTab("home")} transactions={allTransactions} userData={userData} />,
+      "wallet": <WalletPage balance={balance} setBalance={updateBalance} onBack={() => handleSetTab("home")} transactions={allTransactions} userData={userData} tickerSettings={tickerSettings} />,
       "logistics": <LogisticsPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
       "ai_subs": <AISubsPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
       "tv_subs": <TVSubsPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
@@ -400,6 +412,7 @@ export default function App() {
         ) : (
           <>
             {renderScreen()}
+            
             {(!serviceDetail && !["logistics", "ai_subs", "tv_subs", "games", "real_ai", "paypal", "binance", "pyypl", "usd_transfer"].includes(tab)) && <BottomNav tab={tab} setTab={handleSetTab} />}
             {/* Support FAB - Raised and icon changed to message as requested */}
             {tab !== "support" && (

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { G } from "../data";
-import { ModernWalletCard } from "./Shared";
-import { db } from "../lib/firebase";
+import { AdBanner, ModernWalletCard, NewsTicker } from "./Shared";
+import { db, auth } from "../lib/firebase";
 import { collection, query, where, onSnapshot, orderBy, limit, updateDoc, doc } from "firebase/firestore";
 
 interface ServiceItem {
@@ -19,9 +19,30 @@ interface ServiceItem {
   hasDuration?: boolean;
 }
 
-export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, transactions = [], notifications = [] }: { setTab: (t: string, svcId?: string | null) => void, balance?: number, cartCount?: number, userData?: any, transactions?: any[], notifications?: any[] }) {
+export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, transactions = [], notifications = [], tickerSettings }: { setTab: (t: string, svcId?: string | null) => void, balance?: number, cartCount?: number, userData?: any, transactions?: any[], notifications?: any[], tickerSettings?: any }) {
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
+
+  useEffect(() => {
+    if (userData && !userData.referralCode && auth.currentUser) {
+      const generateCode = async () => {
+        const charSet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let myCode = '';
+        for (let i = 0; i < 7; i++) {
+          myCode += charSet.charAt(Math.floor(Math.random() * charSet.length));
+        }
+        try {
+          await updateDoc(doc(db, "users", auth.currentUser!.uid), {
+            referralCode: myCode
+          });
+          console.log("Referral code generated for existing user:", myCode);
+        } catch (err) {
+          console.error("Error generating referral code:", err);
+        }
+      };
+      generateCode();
+    }
+  }, [userData]);
 
   const displayName = userData?.name || "المستخدم";
   const displayRank = userData?.rank === "VIP" ? "عضو VIP ✨" : userData?.rank === "مميز" ? "عضو مميز ⚡" : "عضو عادي";
@@ -34,7 +55,7 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
     const val = t.amountValue !== undefined ? t.amountValue : Number(String(t.amount || "0").replace(/[^\d.]/g, "") || 0);
     return a + val;
   }, 0);
-  const points = Math.floor(totalOut / 10);
+  const points = userData?.rewardPoints || 0;
 
   const recentActivity = transactions.slice(0, 3).map((t, i) => ({
     id: t.id,
@@ -82,6 +103,9 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
         </div>
       </div>
 
+      {/* Top Ticker (Scrolling) */}
+      <AdBanner text={tickerSettings?.top} />
+
       {/* Premium Wallet Display (Exact Wallet style) */}
       <ModernWalletCard 
         balance={balance} 
@@ -89,38 +113,11 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
         totalIn={totalIn} 
         totalOut={totalOut} 
         onTopup={() => setTab("wallet")}
-        onTransfer={() => setTab("services")}
+        onTransfer={() => setTab("wallet")}
       />
 
-      {/* Wide News Ticker */}
-      <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 20, animationDelay: "0.1s" }}>
-        <div style={{ 
-          background: "rgba(59,130,246,0.06)", 
-          border: "1px solid rgba(59,130,246,0.12)", 
-          borderRadius: 12, 
-          padding: "10px 0",
-          overflow: "hidden",
-          position: "relative",
-          display: "flex",
-          alignItems: "center"
-        }}>
-          <div style={{ 
-            position: "absolute", right: 0, top: 0, bottom: 0, width: 40, 
-            background: "linear-gradient(to left, #050810, transparent)", 
-            zIndex: 2 
-          }} />
-          <div style={{ 
-            position: "absolute", left: 0, top: 0, bottom: 0, width: 40, 
-            background: "linear-gradient(to right, #050810, transparent)", 
-            zIndex: 2 
-          }} />
-          
-          <div className="marquee-ltr" 
-               style={{ fontSize: 13, color: G.blue, fontWeight: 700, fontFamily: G.font }}
-               dangerouslySetInnerHTML={{ __html: G.ticker }} 
-          />
-        </div>
-      </div>
+      {/* Bottom Ticker (Static) */}
+      <NewsTicker text={tickerSettings?.bottom} />
 
       {/* Promo Banner */}
       <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 20, animationDelay: "0.2s" }}>
@@ -248,6 +245,7 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
                   { label: "رقم الهاتف", val: userData?.phone || "غير مسجل", icon: "📱" },
                   { label: "الدولة", val: userData?.country ? `${userData.country} ${userData.country === "مصر" ? "🇪🇬" : ""}` : "لم تحدد", icon: "🌍" },
                   { label: "الرصيد المتاح", val: `${balance.toLocaleString()} ج.م`, icon: "💰", color: "#10b981" },
+                  { label: "كود الدعوة", val: userData?.referralCode || "---", icon: "🎁" },
                   { label: "الرتبة", val: displayRank, icon: "👑" },
                 ].map((item, i) => (
                   <div key={i} style={{ 

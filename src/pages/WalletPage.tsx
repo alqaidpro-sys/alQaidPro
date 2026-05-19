@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { doc, collection, setDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { doc, collection, setDoc, updateDoc, increment, serverTimestamp, addDoc } from "firebase/firestore";
 import { G } from "../data";
-import { ModernWalletCard } from "../components/Shared";
+import { ModernWalletCard, AdBanner, NewsTicker } from "../components/Shared";
 
 const T = {
   bg:      "#050810",
@@ -123,14 +124,16 @@ function Badge({ label, color }: any) {
   return <span style={{ padding: "2px 8px", fontSize: 9, fontWeight: 800, borderRadius: 20, background: `${color}20`, color, border: `1px solid ${color}30`, display: "inline-block", whiteSpace: "nowrap" }}>{label}</span>;
 }
 
-export default function WalletPage({ balance = 0, setBalance, onBack, transactions = [], userData }: any) {
+export default function WalletPage({ balance = 0, setBalance, onBack, transactions = [], userData, tickerSettings }: any) {
   const [txs, setTxs]           = useState([]);
   const [step, setStep]         = useState("main");
-  const [amount, setAmount]     = useState(200);
+  const [amount, setAmount]     = useState(0);
   const [custom, setCustom]     = useState("");
   const [method, setMethod]     = useState<any>(null);
   const [fields, setFields]     = useState<any>({});
   const [loading, setLoading]   = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [convertInput, setConvertInput] = useState("");
   const [receipt, setReceipt]   = useState<any>(null);
   const [filter, setFilter]     = useState("الكل");
 
@@ -184,12 +187,67 @@ export default function WalletPage({ balance = 0, setBalance, onBack, transactio
     const val = t.amountValue !== undefined ? t.amountValue : Number(String(t.amount || "0").replace(/[^\d.]/g, ""));
     return a + val;
   }, 0);
-  const points = Math.floor(totalOut / 10);
+  const points = userData?.rewardPoints || 0;
   const filtered  = filter === "الكل" ? transactions : transactions.filter((t: any) => {
     if (filter === "شحن") return t.type === "TOPUP";
     if (filter === "مدفوع") return t.type !== "TOPUP";
     return true;
   });
+
+  const handleConvertPoints = async () => {
+    if (!convertInput) {
+      return alert("يرجى إدخال عدد النقاط أولاً");
+    }
+
+    const amountToConvert = parseInt(convertInput);
+    if (isNaN(amountToConvert) || amountToConvert <= 0) {
+      return alert("يرجى إدخال عدد نقاط صحيح");
+    }
+
+    if (amountToConvert < 150) {
+      return alert("عذراً، الحد الأدنى لتحويل النقاط هو 150 نقطة.");
+    }
+
+    if (amountToConvert > points) {
+      return alert(`عذراً، رصيدك الحالي من النقاط (${points}) لا يكفي لتحويل ${amountToConvert} نقطة.`);
+    }
+
+    const isConfirmed = window.confirm(`هل أنت متأكد من تحويل ${amountToConvert} نقطة إلى رصيد بمبلغ £${amountToConvert}؟`);
+    if (!isConfirmed) return;
+
+    if (!auth.currentUser) return;
+    
+    setLoading(true);
+    try {
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      // Atomic change: subtract specified points and add to balance
+      await updateDoc(userRef, {
+        balance: increment(amountToConvert),
+        rewardPoints: increment(-amountToConvert),
+        updatedAt: serverTimestamp()
+      });
+
+      // Add to notifications
+      await addDoc(collection(db, "notifications"), {
+        userId: auth.currentUser?.uid,
+        title: "💰 تم تحويل جزء من النقاط لرصيد",
+        msg: `لقد تم تحويل ${amountToConvert} نقطة مكافأة إلى £${amountToConvert} في رصيدك بنجاح!`,
+        time: "الآن",
+        type: "support",
+        read: false,
+        createdAt: serverTimestamp()
+      });
+
+      alert(`✅ تم تحويل ${amountToConvert} نقطة بنجاح لرصيدك!`);
+      setShowConvertModal(false);
+      setConvertInput("");
+      setLoading(false);
+    } catch (err: any) {
+      console.error("Conversion error:", err);
+      setLoading(false);
+      alert("⚠️ فشل تحويل النقاط");
+    }
+  };
 
   /* ── SUCCESS ── */
   if (step === "success") return (
@@ -236,6 +294,9 @@ export default function WalletPage({ balance = 0, setBalance, onBack, transactio
             <div className="float"><Logo size={42}/></div>
           </div>
 
+          {/* Ticker (Scrolling Top) */}
+          <AdBanner text={tickerSettings?.top} />
+
           {/* Balance card */}
           <ModernWalletCard 
             balance={balance} 
@@ -243,25 +304,39 @@ export default function WalletPage({ balance = 0, setBalance, onBack, transactio
             totalIn={totalIn} 
             totalOut={totalOut} 
             onTopup={() => { setStep("main"); }}
-            onTransfer={onBack}
+            onTransfer={() => setShowConvertModal(true)}
           />
+
+          {/* Ticker (Static Bottom) */}
+          <NewsTicker text={tickerSettings?.bottom} />
+
+          {/* Referral Code Row */}
+          <div style={{ padding: "0 20px", marginBottom: 15 }}>
+            <GlassCard style={{ padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 9, color: T.sub, marginBottom: 2 }}>كود الدعوة الخاص بك 🎁</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: T.text, letterSpacing: 1 }}>{userData?.referralCode || "---"}</div>
+              </div>
+              <button 
+                className="tap"
+                onClick={() => {
+                  if (userData?.referralCode) {
+                    navigator.clipboard.writeText(userData.referralCode);
+                    alert("تم نسخ كود الدعوة بنجاح ✅");
+                  }
+                }}
+                style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${T.border}`, color: T.text, padding: "8px 16px", borderRadius: 10, fontSize: 10, fontWeight: 900, fontFamily: T.font }}
+              >نسخ الكود 📋</button>
+            </GlassCard>
+          </div>
 
           {/* ══ TOPUP FLOW ══ */}
           <div style={{ padding: "20px 20px 0" }}>
 
-            {/* STEP: main / amount */}
+            {/* STEP: amount entry */}
             {step === "main" && (
               <div className="fadeIn">
-                <div style={{ fontSize: 13, color: T.sub2, fontWeight: 700, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 3, height: 14, background: T.green, borderRadius: 4 }}/>
-                  شحن الرصيد — اختر المبلغ
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 14 }}>
-                  {QUICK_AMOUNTS.map(a => (
-                    <button key={a} onClick={() => { setAmount(a); setCustom(""); }} className="btn" style={{ padding: "14px 8px", borderRadius: 14, fontSize: 15, fontWeight: 900, background: amount === a && !custom ? "rgba(79,142,247,.2)" : T.surface, border: `1px solid ${amount === a && !custom ? T.blue : T.border}`, color: amount === a && !custom ? T.blue : T.text }}>£{a}</button>
-                  ))}
-                </div>
-                <Input label="أو أدخل مبلغاً مخصصاً" value={custom} onChange={(e: any) => setCustom(e.target.value.replace(/\D/g, ""))} placeholder="مثال: 750 (الحد الأدنى £10)" icon="✏️"/>
+                <Input label="أدخل مبلغ الشحن" value={custom} onChange={(e: any) => setCustom(e.target.value.replace(/\D/g, ""))} placeholder="مثال: 500 (الحد الأدنى £10)" icon="💰"/>
                 <div style={{ marginTop: 16 }}>
                   <Btn full label={`التالي ← شحن £${finalAmt || 0}`} onClick={() => finalAmt >= 10 && setStep("method")} disabled={!finalAmt || finalAmt < 10} size="lg" color={T.green}/>
                   {finalAmt > 0 && finalAmt < 10 && <div style={{ fontSize: 11, color: T.red, textAlign: "center", marginTop: 8 }}>الحد الأدنى £10</div>}
@@ -372,6 +447,70 @@ export default function WalletPage({ balance = 0, setBalance, onBack, transactio
           </div>
 
           {/* Transactions — shown only on main */}
+          <AnimatePresence>
+            {showConvertModal && (
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 3000 }}
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 30 }} 
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 32, padding: 25, width: "100%", maxWidth: 400 }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                    <div style={{ fontSize: 18, fontWeight: 900 }}>تحويل النقاط لرصيد ⭐</div>
+                    <button onClick={() => setShowConvertModal(false)} style={{ background: "transparent", border: "none", color: T.sub, fontSize: 20 }}>✕</button>
+                  </div>
+
+                  <div style={{ background: "rgba(255,255,255,0.03)", padding: 15, borderRadius: 20, marginBottom: 20, border: `1px solid ${T.border}` }}>
+                    <div style={{ fontSize: 10, color: T.sub, marginBottom: 5 }}>نقاطك المتاحة</div>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: T.yellow }}>{points} <span style={{ fontSize: 12 }}>نقطة</span></div>
+                  </div>
+
+                  <Input 
+                    label="عدد النقاط المراد تحويلها" 
+                    value={convertInput} 
+                    onChange={(e: any) => setConvertInput(e.target.value.replace(/\D/g, ""))} 
+                    placeholder="أدخل عدد النقاط..." 
+                    icon="⭐"
+                  />
+
+                  {convertInput && !isNaN(parseInt(convertInput)) && (
+                    <div style={{ background: `${T.green}10`, border: `1px solid ${T.green}30`, padding: 12, borderRadius: 14, marginTop: -10, marginBottom: 20, textAlign: "center" }}>
+                      <div style={{ fontSize: 10, color: T.green }}>القيمة التي ستضاف لحسابك:</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: T.green }}>£{parseInt(convertInput).toLocaleString()} ج.م</div>
+                    </div>
+                  )}
+
+                  <Btn 
+                    full 
+                    disabled={loading} 
+                    label={loading ? "جاري التحويل..." : "تأكيد التحويل ✅"} 
+                    onClick={handleConvertPoints}
+                    color={T.yellow}
+                  />
+
+                  <div style={{ marginTop: 12 }}>
+                    <Btn 
+                      full 
+                      variant="outline"
+                      label="إغلاق" 
+                      onClick={() => setShowConvertModal(false)}
+                    />
+                  </div>
+
+                  <div style={{ fontSize: 10, color: T.sub, textAlign: "center", marginTop: 15 }}>
+                    * الحد الأدنى للتحويل 150 نقطة. وكل 1 نقطة تعادل 1 جنيه.
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {step === "main" && (
             <div style={{ padding: "24px 20px 0" }}>
               <div style={{ height: 1, background: T.border, marginBottom: 20 }}/>

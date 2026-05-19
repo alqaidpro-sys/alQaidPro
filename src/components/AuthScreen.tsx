@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
   User as FirebaseUser 
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, increment, addDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 
 const T = {
@@ -110,7 +110,7 @@ export function AuthScreen({ onLogin }: { onLogin: (email: string) => void }) {
   const [country, setCountry] = useState("مصر 🇪🇬");
   const [pass, setPass] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [pin, setPin] = useState("");
+  const [refCode, setRefCode] = useState("");
   const [agree, setAgree] = useState(false);
 
   // Login Fields
@@ -137,13 +137,37 @@ export function AuthScreen({ onLogin }: { onLogin: (email: string) => void }) {
     if (!agree) return setErrorMsg("يجب الموافقة على الشروط والأحكام أولاً");
     if (pass !== confirm) return setErrorMsg("كلمات المرور غير متطابقة");
     if (pass.length < 6) return setErrorMsg("يجب أن تكون كلمة المرور 6 أحرف على الأقل");
-    if (pin.length !== 4) return setErrorMsg("يجب إدخال PIN أمان مكون من 4 أرقام");
     if (!email || !pass || !name) return setErrorMsg("برجاء إكمال جميع البيانات الأساسية");
     
     setLoading(true);
     setErrorMsg("");
     try {
       console.log("Starting Firebase Auth registration...");
+
+      // 1. Generate unique 7-char referral code for the new user
+      const charSet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let myCode = '';
+      for (let i = 0; i < 7; i++) {
+        myCode += charSet.charAt(Math.floor(Math.random() * charSet.length));
+      }
+
+      // 2. Check if referral code entered by user is valid
+      let referrerUid = null;
+      if (refCode.trim()) {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("referralCode", "==", refCode.trim().toUpperCase()));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          referrerUid = querySnapshot.docs[0].id;
+        } else {
+          // If a code was entered but not found, we can either error or ignore. 
+          // User said "إذا سجل منه و كتبه أثناء التسجيل ياخد ١٠ نقاط". 
+          // Erroring is safer if they think they applied it.
+          setLoading(false);
+          return setErrorMsg("كود الدعوة المدخل غير صحيح");
+        }
+      }
+
       const userCred = await createUserWithEmailAndPassword(auth, email, pass);
       const user = userCred.user;
       
@@ -154,12 +178,32 @@ export function AuthScreen({ onLogin }: { onLogin: (email: string) => void }) {
         email,
         phone,
         country,
-        pin, // Saving security pin
+        referralCode: myCode,
+        rewardPoints: 0,
+        referredBy: referrerUid, // Save the UID of the person who invited this user
         balance: 0,
         rank: "عادي",
-        role: email === "alqaidpro@gmail.com" ? "admin" : "user", // Set default admin role properly
+        role: email === "alqaidpro@gmail.com" ? "admin" : "user",
         joinedAt: new Date().toISOString()
       });
+
+      // 3. Award 10 points to referrer if exists
+      if (referrerUid) {
+        await updateDoc(doc(db, "users", referrerUid), {
+          rewardPoints: increment(10)
+        });
+        
+        // Notify referrer
+        await addDoc(collection(db, "notifications"), {
+          userId: referrerUid,
+          title: "🎉 مكافأة دعوة جديدة!",
+          msg: `لقد حصلت على 10 نقاط مكافأة لأن ${name} سجل باستخدام كود الدعوة الخاص بك!`,
+          time: "الآن",
+          type: "support",
+          read: false,
+          createdAt: serverTimestamp()
+        });
+      }
       
       console.log("Registration complete!");
       onLogin(email);
@@ -284,7 +328,7 @@ export function AuthScreen({ onLogin }: { onLogin: (email: string) => void }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Field label="كلمة المرور" value={pass} onChange={(e: any) => setPass(e.target.value)} type="password" placeholder="••••••••" />
             <Field label="تأكيد كلمة المرور" value={confirm} onChange={(e: any) => setConfirm(e.target.value)} type="password" placeholder="••••••••" />
-            <Field label="PIN الأمان (4 أرقام)" value={pin} onChange={(e: any) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} type="password" placeholder="••••" icon="🔐" />
+            <Field label="كود الدعوة (اختياري)" value={refCode} onChange={(e: any) => setRefCode(e.target.value.toUpperCase())} placeholder="XXXXXXX" icon="🎁" hint="إذا كان معك كود دعوة" />
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button onClick={() => setStep(1)} className="tap" style={{ flex: 1, padding: 14, borderRadius: 14, border: `1px solid ${T.border}`, color: T.sub, background: "transparent" }}>رجوع</button>
               <button onClick={() => setStep(3)} className="tap" style={{ flex: 2, padding: 14, borderRadius: 14, background: T.blue, color: "#fff", fontWeight: 900, border: "none" }}>التالي</button>

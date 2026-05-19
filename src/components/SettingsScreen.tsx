@@ -3,7 +3,8 @@ import { AdminPanel } from "./AdminPanel";
 import { G } from "../data";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, query, where, getDocs, increment, serverTimestamp, addDoc } from "firebase/firestore";
+import { motion, AnimatePresence } from "motion/react";
 
 const T = {
   bg: "var(--sett-bg)",
@@ -55,6 +56,85 @@ export function SettingsScreen({ onBack, userEmail, orders = [], onUpdateOrder, 
     address: userData?.address || "",
     phone: userData?.phone || ""
   });
+
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
+  const [convertInput, setConvertInput] = useState("");
+  const [isConverting, setIsConverting] = useState(false);
+
+  useEffect(() => {
+    if (activeModal === "invitations" && auth.currentUser) {
+      fetchInvitations();
+    }
+  }, [activeModal]);
+
+  const fetchInvitations = async () => {
+    if (!auth.currentUser) return;
+    setInvitesLoading(true);
+    try {
+      const q = query(collection(db, "users"), where("referredBy", "==", auth.currentUser.uid));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setInvitations(list);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setInvitesLoading(false);
+    }
+  };
+
+  const handleConvertPoints = async () => {
+    if (!convertInput) {
+      return alert("يرجى إدخال عدد النقاط أولاً");
+    }
+
+    const points = userData?.rewardPoints || 0;
+    const amountToConvert = parseInt(convertInput);
+
+    if (isNaN(amountToConvert) || amountToConvert <= 0) {
+      return alert("يرجى إدخال عدد نقاط صحيح");
+    }
+    if (amountToConvert < 150) {
+      return alert("عذراً، الحد الأدنى لتحويل النقاط هو 150 نقطة.");
+    }
+    if (amountToConvert > points) {
+      return alert(`عذراً، رصيدك الحالي من النقاط (${points}) لا يكفي لتحويل ${amountToConvert} نقطة.`);
+    }
+
+    const isConfirmed = window.confirm(`هل أنت متأكد من تحويل ${amountToConvert} نقطة إلى رصيد بمبلغ £${amountToConvert}؟`);
+    if (!isConfirmed) return;
+
+    if (!auth.currentUser) return;
+    
+    setIsConverting(true);
+    try {
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      await updateDoc(userRef, {
+        balance: increment(amountToConvert),
+        rewardPoints: increment(-amountToConvert),
+        updatedAt: serverTimestamp()
+      });
+
+      await addDoc(collection(db, "notifications"), {
+        userId: auth.currentUser.uid,
+        title: "💰 تم تحويل جزء من النقاط لرصيد",
+        msg: `لقد تم تحويل ${amountToConvert} نقطة مكافأة إلى £${amountToConvert} في رصيدك بنجاح!`,
+        time: "الآن",
+        type: "support",
+        read: false,
+        createdAt: serverTimestamp()
+      });
+
+      alert(`✅ تم تحويل ${amountToConvert} نقطة بنجاح لرصيدك!`);
+      setConvertInput("");
+      setActiveModal(null);
+    } catch (err: any) {
+      console.error(err);
+      alert("⚠️ فشل تحويل النقاط");
+    } finally {
+      setIsConverting(false);
+    }
+  };
 
   useEffect(() => {
     if (userData) {
@@ -174,6 +254,8 @@ export function SettingsScreen({ onBack, userEmail, orders = [], onUpdateOrder, 
       {/* Profile Info */}
       <Section title="الحساب والمعلومات">
         <Row icon="👤" name="بياناتي" sub="العنوان، رقم الهاتف، والبيانات الشخصية" onClick={() => setActiveModal("profile")} badgeColor="rgba(59,130,246,.14)" />
+        <Row icon="⭐" name="نقاط المكافأة" sub={`لديك ${userData?.rewardPoints || 0} نقطة مكافأة`} onClick={() => setActiveModal("rewardPoints")} badgeColor="rgba(251,191,36,.14)" />
+        <Row icon="🎁" name="دعواتي" sub="قائمة الأشخاص الذين سجلوا عن طريقك" onClick={() => setActiveModal("invitations")} badgeColor="rgba(124,92,252,.14)" />
       </Section>
 
       {/* Notifications */}
@@ -226,6 +308,98 @@ export function SettingsScreen({ onBack, userEmail, orders = [], onUpdateOrder, 
           <div onClick={e => e.stopPropagation()} className="fadeUp" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: "26px 26px 0 0", width: "100%", maxWidth: 480, padding: "20px 20px 44px" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: T.border2, margin: "0 auto 18px" }} />
             
+            {activeModal === "rewardPoints" && (
+              <div dir="rtl" style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 15, color: T.text, fontFamily: T.font }}>⭐ نقاط المكافأة</div>
+                
+                <div style={{ 
+                  background: "linear-gradient(135deg,rgba(251,191,36,0.1),rgba(251,191,36,0.05))", 
+                  border: `1px solid rgba(251,191,36,0.2)`, 
+                  padding: 24, borderRadius: 24, marginBottom: 20, textAlign: "center" 
+                }}>
+                  <div style={{ fontSize: 11, color: T.text3, marginBottom: 6, fontFamily: T.font }}>رصيدك من النقاط</div>
+                  <div style={{ fontSize: 36, fontWeight: 900, color: T.yellow }}>{(userData?.rewardPoints || 0).toLocaleString()} <span style={{ fontSize: 14 }}>نقطة</span></div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: T.text2, display: "block", marginBottom: 8, fontFamily: T.font }}>عدد النقاط المراد تحويلها</label>
+                  <input 
+                    type="number"
+                    value={convertInput}
+                    onChange={(e) => setConvertInput(e.target.value.replace(/\D/g, ""))}
+                    placeholder="أدخل عدد النقاط (مثال: 150)"
+                    style={{ width: "100%", padding: 14, borderRadius: 14, background: "#000", border: `1px solid ${T.border}`, color: "#fff", fontFamily: T.font, fontSize: 16 }}
+                  />
+                  <div style={{ fontSize: 10, color: T.text3, marginTop: 8, fontFamily: T.font }}>* الحد الأدنى للتحويل 150 نقطة. كل 1 نقطة تعادل 1 جنيه رصيد.</div>
+                </div>
+
+                <button 
+                  onClick={handleConvertPoints}
+                  disabled={isConverting}
+                  className="tap"
+                  style={{ 
+                    width: "100%", padding: 15, borderRadius: 14, 
+                    background: T.yellow, color: "#000", fontWeight: 900, 
+                    border: "none", fontSize: 15, fontFamily: T.font, marginBottom: 12,
+                    opacity: isConverting ? 0.6 : 1
+                  }}
+                >
+                  {isConverting ? "جاري التحويل..." : "تحويل النقاط لرصيد ✅"}
+                </button>
+
+                <button 
+                  onClick={() => setActiveModal(null)}
+                  className="tap"
+                  style={{ 
+                    width: "100%", padding: 15, borderRadius: 14, 
+                    background: "rgba(255,255,255,0.05)", color: T.text2, fontWeight: 800, 
+                    border: `1px solid ${T.border}`, fontSize: 15, fontFamily: T.font
+                  }}
+                >
+                  إغلاق
+                </button>
+              </div>
+            )}
+
+            {activeModal === "invitations" && (
+              <div dir="rtl" style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 15, color: T.text, fontFamily: T.font }}>🎁 دعواتي</div>
+                
+                <div style={{ fontSize: 12, color: T.text2, marginBottom: 15, fontFamily: T.font }}>
+                  أهلاً بك! هنا تظهر قائمة الأشخاص الذين قاموا بالتسجيل باستخدام كود الدعوة الخاص بك ({userData?.referralCode || "---"}).
+                </div>
+
+                <div style={{ maxHeight: "50vh", overflowY: "auto", padding: "0 4px" }}>
+                  {invitesLoading ? (
+                    <div style={{ textAlign: "center", padding: 20, color: T.text3 }}>جاري تحميل القائمة...</div>
+                  ) : invitations.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 40, background: "rgba(255,255,255,0.02)", borderRadius: 20, border: `1px dashed ${T.border}` }}>
+                      <div style={{ fontSize: 32, marginBottom: 10 }}>Empty 💨</div>
+                      <div style={{ fontSize: 12, color: T.text3, fontFamily: T.font }}>لم يقم أحد بالتسجيل باستخدام كودك بعد.</div>
+                    </div>
+                  ) : (
+                    invitations.map((inv, i) => (
+                      <div key={i} style={{ 
+                        display: "flex", alignItems: "center", justifyContent: "space-between", 
+                        padding: 14, background: T.surface2, border: `1px solid ${T.border}`,
+                        borderRadius: 16, marginBottom: 8
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(124,92,252,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>👤</div>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, fontFamily: T.font }}>{inv.name}</div>
+                            <div style={{ fontSize: 10, color: T.text3, fontFamily: T.font }}>{inv.joinedAt ? new Date(inv.joinedAt).toLocaleDateString("ar-EG") : "تاريخ غير معروف"}</div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "left" }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: T.yellow }}>{inv.rewardPoints || 0} ⭐</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
             {activeModal === "profile" && (
               <div dir="rtl">
                 <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 8, color: T.text, fontFamily: T.font, textAlign: "right" }}>👤 بياناتي</div>

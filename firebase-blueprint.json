@@ -8,11 +8,29 @@
         "name": { "type": "string" },
         "email": { "type": "string" },
         "balance": { "type": "number" },
+        "rewardPoints": { "type": "number" },
+        "referralCode": { "type": "string" },
+        "referredBy": { "type": "string" },
         "rank": { "type": "string", "enum": ["عادي", "مميز", "VIP"] },
         "joinedAt": { "type": "string", "format": "date-time" },
-        "isAdmin": { "type": "boolean" }
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "country": { "type": "string" },
+        "province": { "type": "string" },
+        "city": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" }
       },
       "required": ["name", "email", "balance", "rank"]
+    },
+    "TickerConfig": {
+      "title": "Ticker Configuration",
+      "description": "Scrolling and static ticker text settings.",
+      "type": "object",
+      "properties": {
+        "top": { "type": "string" },
+        "bottom": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     },
     "Order": {
       "title": "Order",
@@ -99,6 +117,10 @@
     "/notifications/{notifId}": {
       "schema": "Notification",
       "description": "User notifications."
+    },
+    "/configs/{configId}": {
+      "schema": "TickerConfig",
+      "description": "System-wide configurations like tickers."
     }
   }
 }

@@ -53,8 +53,12 @@ service cloud.firestore {
       allow create: if isOwner(userId); 
       allow update: if isAdmin() || 
                     (isOwner(userId) && 
-                     incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'country', 'province', 'city', 'address', 'phone', 'balance', 'updatedAt']) &&
-                     incoming().balance <= existing().balance); // Only allow equal or decrement
+                     incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'country', 'province', 'city', 'address', 'phone', 'balance', 'rewardPoints', 'referralCode', 'updatedAt']) &&
+                     (
+                       !incoming().diff(existing()).affectedKeys().contains('balance') || // Balance not changed
+                       incoming().balance <= existing().balance || // Balance decreased
+                       (incoming().balance - existing().balance == existing().rewardPoints - incoming().rewardPoints) // Balance increased via points conversion
+                     ));
     }
 
     match /system/connection_test {
@@ -87,6 +91,11 @@ service cloud.firestore {
       allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn() && isValidSupportTicket(incoming());
       allow update: if isAdmin();
+    }
+
+    match /configs/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

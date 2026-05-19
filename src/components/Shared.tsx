@@ -74,7 +74,7 @@ export function PrimaryBtn({ label, onClick, color = G.blue, icon }: { label: st
 }
 
 export function ModernWalletCard({ balance, points, totalIn, totalOut, onTopup, onTransfer }: any) {
-  const pointsVal = Math.floor(points / 10);
+  const pointsVal = points; // 1 point = 1 EGP
   
   return (
     <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 20 }}>
@@ -106,7 +106,7 @@ export function ModernWalletCard({ balance, points, totalIn, totalOut, onTopup, 
               <span style={{ fontSize: 22 }}>{points.toLocaleString()}</span>
               <span style={{ fontSize: 16 }}>⭐</span>
             </div>
-            <div style={{ fontSize: 9, color: G.sub, fontFamily: G.font, fontWeight: 600 }}>= £{pointsVal} خصم</div>
+            <div style={{ fontSize: 9, color: G.sub, fontFamily: G.font, fontWeight: 600 }}>= £{pointsVal} رصيد</div>
           </div>
         </div>
 
@@ -131,7 +131,7 @@ export function ModernWalletCard({ balance, points, totalIn, totalOut, onTopup, 
           }}>شحن الرصيد</button>
           <button className="tap" onClick={onTransfer} style={{
             flex: 1, background: "rgba(255,255,255,0.03)", padding: "14px", borderRadius: 14, color: G.text, fontSize: 13, fontWeight: 900, border: "1px solid rgba(255,255,255,0.08)", fontFamily: G.font
-          }}>تحويل أموال</button>
+          }}>تحويل النقاط</button>
         </div>
       </div>
     </div>
@@ -244,5 +244,85 @@ export function DirectMessageModal({ msg, onClose }: { msg: string, onClose: () 
         </button>
       </motion.div>
     </motion.div>
+  );
+}
+
+export function AdBanner({ text }: { text?: string }) {
+  const defaultAds = [
+    "🔥 عروض حصرية على اشتراكات AI! لا تفوت الفرصة الآن.",
+    "🚀 سجل اليوم واحصل على مكافآت دعوة تصل إلى 100 جنيه!",
+    "💡 خدمتنا تدعم PayPal و Binance و Pyypl و تحويل الدولار.",
+    "📱 تابعنا على تيليجرام للحصول على أحدث التحديثات والأخبار.",
+    "👑 رتبة VIP تمنحك خصومات دائمة على جميع الخدمات."
+  ];
+
+  const ads = text ? [text] : defaultAds;
+
+  return (
+    <div style={{
+      width: "100%",
+      background: "rgba(0,0,0,0.45)",
+      backdropFilter: "blur(10px)",
+      borderTop: `1px solid ${G.cardBorder}`,
+      borderBottom: `1px solid ${G.cardBorder}`,
+      height: 38,
+      display: "flex",
+      alignItems: "center",
+      overflow: "hidden",
+      position: "relative",
+      zIndex: 50,
+      marginBottom: 10
+    }}>
+      <div style={{
+        whiteSpace: "nowrap",
+        display: "flex",
+        gap: 50,
+        paddingRight: "100%",
+        animation: "scroll-ad-ltr 90s linear infinite"
+      }}>
+        {/* We repeat the ads to ensure smooth loop */}
+        {[...ads, ...ads, ...ads].map((ad, i) => (
+          <span key={i} style={{ 
+            color: G.text, 
+            fontSize: 12, 
+            fontWeight: 800, 
+            fontFamily: G.font,
+            display: "flex",
+            alignItems: "center",
+            gap: 8
+          }}>
+            <span style={{ color: G.blue }}>•</span> {ad}
+          </span>
+        ))}
+      </div>
+      <style>{`
+        @keyframes scroll-ad-ltr {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export function NewsTicker({ text }: { text?: string }) {
+  if (!text) return null;
+  return (
+    <div style={{ padding: "0 20px", marginBottom: 15 }}>
+      <div style={{
+        background: "rgba(255,255,255,0.02)",
+        border: `1px solid ${G.cardBorder}`,
+        borderRadius: 16,
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12
+      }}>
+        <div style={{ fontSize: 18 }}>📢</div>
+        <div style={{ fontSize: 12, color: G.text, lineHeight: 1.5, fontWeight: 700, fontFamily: G.font }}>
+          {text}
+        </div>
+      </div>
+    </div>
   );
 }
