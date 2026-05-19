@@ -19,9 +19,8 @@ service cloud.firestore {
     // Validation Blueprints
     function isValidOrder(data) {
       return data.keys().hasAll(['name', 'amount', 'userId', 'status']) &&
-             data.name is string &&
              data.userId is string &&
-             data.status in ['processing', 'active', 'completed', 'rejected'];
+             data.status in ['pending', 'processing', 'active', 'completed', 'rejected'];
     }
 
     function isValidSupportTicket(data) {

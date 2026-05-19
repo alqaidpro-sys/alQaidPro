@@ -96,8 +96,10 @@ const ALL_SERVICES_GROUPS = [
   }
 ];
 
-export function ServicesScreen({ setTab, cartCount = 0 }: any) {
+export function ServicesScreen({ setTab, cartCount = 0, tickerSettings }: any) {
   const [search, setSearch] = useState("");
+
+  const servicesTicker = tickerSettings?.services || G.ticker;
 
   const renderGroup = (group: any, idx: number) => {
     const filteredItems = group.items.filter((s: any) => 
@@ -251,10 +253,18 @@ export function ServicesScreen({ setTab, cartCount = 0 }: any) {
               zIndex: 2 
             }} />
             
-            <div className="marquee-ltr" 
-                 style={{ fontSize: 13, color: G.blue, fontWeight: 700, fontFamily: G.font }}
-                 dangerouslySetInnerHTML={{ __html: G.ticker }} 
-            />
+            <div className="marquee-seamless-rtl" 
+                 style={{ 
+                   fontSize: 13, 
+                   color: G.blue, 
+                   fontWeight: 700, 
+                   fontFamily: G.font,
+                   animationDuration: "40s" 
+                 }}
+            >
+              <div dangerouslySetInnerHTML={{ __html: servicesTicker + "&nbsp;&nbsp;•&nbsp;&nbsp;" }} />
+              <div dangerouslySetInnerHTML={{ __html: servicesTicker + "&nbsp;&nbsp;•&nbsp;&nbsp;" }} />
+            </div>
           </div>
         </div>
       )}

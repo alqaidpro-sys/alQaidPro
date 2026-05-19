@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { processPurchase } from "../services/purchaseService";
 
 const C = {
@@ -117,62 +117,6 @@ const AI_SERVICES = [
 ];
 
 /* ══════════════════════════
-   SHARED
-══════════════════════════ */
-function SupportSection() {
-  return (
-    <div>
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11 }}>
-        <span>🛡️</span>
-        <span style={{ fontSize:13, color:C.sub, fontWeight:700 }}>الدعم والمساعدة</span>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:9 }}>
-        {[["💬","دردشة حية"],["✉️","البريد"],["🎟️","تذكرة دعم"]].map(([ic,lb],i)=>(
-          <div key={i} className="tap" style={{ background:C.card, border:`1px solid ${C.borderB}`, borderRadius:13, padding:"14px 8px", display:"flex", flexDirection:"column", alignItems:"center", gap:7 }}>
-            <span style={{ fontSize:22 }}>{ic}</span>
-            <span style={{ fontSize:11, color:C.sub, fontWeight:700 }}>{lb}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FaqSection() {
-  const [open, setOpen] = useState<number | null>(null);
-  const faqs = [
-    ["متى يبدأ التفعيل؟",           "يبدأ التفعيل فوراً بعد تأكيد الطلب خلال دقائق."],
-    ["هل الاشتراك أصلي؟",           "نعم، جميع اشتراكاتنا أصلية 100% بحسابات حقيقية."],
-    ["كيف يصلني الحساب؟",           "يُرسل الحساب على البريد الإلكتروني الذي أدخلته."],
-    ["هل هناك ضمان؟",              "نعم، مضمون طوال مدة الاشتراك أو يُرجع الرصيد."],
-  ];
-  return (
-    <div>
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11 }}>
-        <span>❓</span>
-        <span style={{ fontSize:13, color:C.sub, fontWeight:700 }}>الأسئلة الشائعة</span>
-      </div>
-      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, overflow:"hidden" }}>
-        {faqs.map(([q,a],i)=>(
-          <div key={i}>
-            <div className="tap" onClick={()=>setOpen(open===i?null:i)}
-              style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px", borderBottom:i<faqs.length-1||open===i?`1px solid ${C.borderB}`:"none" }}>
-              <span style={{ fontSize:13, color:C.text, fontWeight:600 }}>{q}</span>
-              <span style={{ color:C.sub2, fontSize:10, display:"inline-block", transform:open===i?"rotate(180deg)":"none", transition:"transform .2s" }}>▼</span>
-            </div>
-            {open===i && (
-              <div className="fadeUp" style={{ padding:"11px 16px 14px", background:C.bg, borderBottom:i<faqs.length-1?`1px solid ${C.borderB}`:"none" }}>
-                <p style={{ fontSize:12, color:C.sub, lineHeight:1.9 }}>{a}</p>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ══════════════════════════
    MAIN
 ══════════════════════════ */
 export default function AISubsPage({ balance=5000, setBalance, onBack=()=>{}, onAddToCart, initialSel }: any) {
@@ -183,6 +127,12 @@ export default function AISubsPage({ balance=5000, setBalance, onBack=()=>{}, on
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState("");
   const [showAdded, setShowAdded] = useState(false);
+
+  useEffect(() => {
+    if (initialSel) {
+      setSel(initialSel);
+    }
+  }, [initialSel]);
 
   const svc    = AI_SERVICES.find(s => s.id === sel);
   const selPlan= svc?.plans.find(p => p.n === plan);
@@ -429,9 +379,6 @@ export default function AISubsPage({ balance=5000, setBalance, onBack=()=>{}, on
                   🛒 إضافة للسلة
                 </button>
               </div>
-
-              <SupportSection/>
-              <FaqSection/>
             </div>
           )}
 

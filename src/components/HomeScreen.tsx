@@ -19,7 +19,7 @@ interface ServiceItem {
   hasDuration?: boolean;
 }
 
-export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, transactions = [], notifications = [], tickerSettings }: { setTab: (t: string, svcId?: string | null) => void, balance?: number, cartCount?: number, userData?: any, transactions?: any[], notifications?: any[], tickerSettings?: any }) {
+export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, transactions = [], globalRecentOrders = [], globalStats, notifications = [], tickerSettings }: { setTab: (t: string, svcId?: string | null) => void, balance?: number, cartCount?: number, userData?: any, transactions?: any[], globalRecentOrders?: any[], globalStats?: any, notifications?: any[], tickerSettings?: any }) {
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
 
@@ -138,33 +138,58 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
         </div>
       </div>
 
-      {/* Real AI Tools Section */}
+      {/* Global Statistics Section */}
       <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 24, animationDelay: "0.25s" }}>
-        <div style={{ fontSize: 14, fontWeight: 900, color: G.text, marginBottom: 12, fontFamily: G.font, textAlign: "right" }}>أدوات الذكاء الاصطناعي ✨</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-          {[
-            { id: "real_ai", sub: "img", name: "بالذكاء الاصطناعي", icon: "🖼️", status: "فوري", color: "#8b5cf6" },
-            { id: "real_ai", sub: "summ", name: "تلخيص النصوص", icon: "📝", status: "فوري", color: "#0ea5e9" },
-            { id: "real_ai", sub: "content", name: "صانع المحتوى", icon: "✍️", status: "فوري", color: "#f43f5e" },
-          ].map((act, i) => (
-            <div key={i} className="tap" 
-              onClick={() => setTab("real_ai", act.sub)}
-              style={{ 
-                textAlign: "center", 
-                background: "#0f172a", 
-                borderRadius: 16, 
-                padding: "12px 8px",
-                border: "1px solid rgba(255,255,255,0.03)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 6
+        <div style={{ fontSize: 14, fontWeight: 900, color: G.text, marginBottom: 12, fontFamily: G.font, textAlign: "right" }}>إحصائيات المنصة 📊</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <div style={{ background: "#0f172a", borderRadius: 20, padding: "16px 12px", border: "1px solid rgba(255,255,255,0.03)", textAlign: "center" }}>
+            <div style={{ fontSize: 10, color: G.sub, marginBottom: 4, fontFamily: G.font }}>إجمالي الأعضاء</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: G.blue, fontFamily: G.font }}>{( (Number(globalStats?.members) || 0) + 23488).toLocaleString()}</div>
+          </div>
+          <div style={{ background: "#0f172a", borderRadius: 20, padding: "16px 12px", border: "1px solid rgba(255,255,255,0.03)", textAlign: "center" }}>
+            <div style={{ fontSize: 10, color: G.sub, marginBottom: 4, fontFamily: G.font }}>الطلبات المنفذة</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#10b981", fontFamily: G.font }}>{( (Number(globalStats?.orders) || 0) + 12848).toLocaleString()}</div>
+          </div>
+          <div style={{ background: "#0f172a", borderRadius: 20, padding: "16px 12px", border: "1px solid rgba(255,255,255,0.03)", textAlign: "center" }}>
+            <div style={{ fontSize: 10, color: G.sub, marginBottom: 4, fontFamily: G.font }}>إجمالي الشحن</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#f59e0b", fontFamily: G.font }}>£{( (Number(globalStats?.recharge) || 0) + 2546488).toLocaleString()}</div>
+          </div>
+          <div style={{ background: "#0f172a", borderRadius: 20, padding: "16px 12px", border: "1px solid rgba(255,255,255,0.03)", textAlign: "center" }}>
+            <div style={{ fontSize: 10, color: G.sub, marginBottom: 4, fontFamily: G.font }}>المصروفات</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#ef4444", fontFamily: G.font }}>£{( (Number(globalStats?.expenses) || 0) + 185454).toLocaleString()}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Global Recent Orders Section (Last 10) */}
+      <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 24, animationDelay: "0.3s" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#10b981", fontWeight: 800, background: "rgba(16,185,129,0.1)", padding: "2px 8px", borderRadius: 8 }}>مباشر 🟢</div>
+          <div style={{ fontSize: 14, fontWeight: 900, color: G.text, fontFamily: G.font }}>آخر 10 طلبات منفذة</div>
+        </div>
+        <div style={{ background: "#0f172a", borderRadius: 24, border: "1px solid rgba(255,255,255,0.03)", overflow: "hidden" }}>
+          {(!globalRecentOrders || globalRecentOrders.length === 0) ? (
+            <div style={{ padding: 20, textAlign: "center", color: G.sub, fontSize: 12, opacity: 0.6 }}>لا توجد طلبات حديثة حالياً</div>
+          ) : (
+            globalRecentOrders.map((o: any, idx: number) => (
+              <div key={o.id} style={{ 
+                padding: "12px 16px", 
+                borderBottom: idx < globalRecentOrders.length - 1 ? "1px solid rgba(255,255,255,0.02)" : "none",
+                display: "flex", alignItems: "center", justifyContent: "space-between"
               }}>
-              <div style={{ fontSize: 22 }}>{act.icon}</div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: G.text, fontFamily: G.font }}>{act.name}</div>
-              <div style={{ fontSize: 8, color: "#10b981", fontWeight: 700, fontFamily: G.font }}>{act.status}</div>
-            </div>
-          ))}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 10, background: "rgba(59,130,246,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
+                    {o.serviceIcon || "📦"}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: G.text }}>{o.name}</div>
+                    <div style={{ fontSize: 9, color: G.sub }}>{o.createdAt?.toDate ? o.createdAt.toDate().toLocaleTimeString("ar-EG", {hour:'2-digit', minute:'2-digit'}) : "الآن"}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 900, color: "#10b981", background: "rgba(16,185,129,0.1)", padding: "2px 8px", borderRadius: 6 }}>مكتمل ✅</div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

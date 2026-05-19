@@ -273,34 +273,24 @@ export function AdBanner({ text }: { text?: string }) {
       zIndex: 50,
       marginBottom: 10
     }}>
-      <div style={{
-        whiteSpace: "nowrap",
-        display: "flex",
-        gap: 50,
-        paddingRight: "100%",
-        animation: "scroll-ad-ltr 90s linear infinite"
+      <div className="marquee-seamless-rtl" style={{
+        animationDuration: "90s"
       }}>
-        {/* We repeat the ads to ensure smooth loop */}
-        {[...ads, ...ads, ...ads].map((ad, i) => (
-          <span key={i} style={{ 
-            color: G.text, 
-            fontSize: 12, 
-            fontWeight: 800, 
-            fontFamily: G.font,
-            display: "flex",
-            alignItems: "center",
-            gap: 8
-          }}>
-            <span style={{ color: G.blue }}>•</span> {ad}
-          </span>
-        ))}
+        <div style={{ display: "flex", gap: 60, paddingLeft: 60, alignItems: "center" }}>
+          {ads.map((ad, i) => (
+            <span key={"a"+i} style={{ color: G.text, fontSize: 12, fontWeight: 800, fontFamily: G.font, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: G.blue }}>•</span> {ad}
+            </span>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 60, paddingLeft: 60, alignItems: "center" }}>
+          {ads.map((ad, i) => (
+            <span key={"b"+i} style={{ color: G.text, fontSize: 12, fontWeight: 800, fontFamily: G.font, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: G.blue }}>•</span> {ad}
+            </span>
+          ))}
+        </div>
       </div>
-      <style>{`
-        @keyframes scroll-ad-ltr {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
     </div>
   );
 }

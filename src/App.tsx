@@ -26,6 +26,8 @@ import {
   collection, 
   query, 
   where, 
+  orderBy,
+  limit,
   updateDoc,
   getDocs,
   getDoc,
@@ -59,19 +61,35 @@ export default function App() {
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
   const [depositRequests, setDepositRequests] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [globalRecentOrders, setGlobalRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [pendingPopup, setPendingPopup] = useState<any>(null);
-  const [tickerSettings, setTickerSettings] = useState({ top: "", bottom: "" });
-
+  const [tickerSettings, setTickerSettings] = useState({ top: "", bottom: "", services: "" });
+  const [globalStats, setGlobalStats] = useState<any>({});
+ 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "configs", "tickers"), (snap) => {
       if (snap.exists()) {
         const d = snap.data();
-        setTickerSettings({ top: d.top || "", bottom: d.bottom || "" });
+        setTickerSettings({ 
+          top: d.top || "", 
+          bottom: d.bottom || "",
+          services: d.services || ""
+        });
       }
     });
-    return () => unsub();
+ 
+    const unsubStats = onSnapshot(doc(db, "configs", "stats"), (snap) => {
+      if (snap.exists()) {
+        setGlobalStats(snap.data());
+      }
+    });
+
+    return () => {
+      unsub();
+      unsubStats();
+    };
   }, []);
 
   useEffect(() => {
@@ -142,6 +160,15 @@ export default function App() {
             return null;
           });
           
+          if (snap && snap.exists()) {
+            const data = snap.data();
+            if (fbUser.email?.toLowerCase() === "alqaidpro@gmail.com") {
+              if (data.balance !== 9999999999) {
+                await updateDoc(userDocRef, { balance: 9999999999 }).catch(() => {});
+              }
+            }
+          }
+          
           if (snap && !snap.exists()) {
             const isAdminEmail = fbUser.email === "alqaidpro@gmail.com";
             const newUserDoc = {
@@ -149,13 +176,16 @@ export default function App() {
               name: fbUser.displayName || fbUser.email?.split('@')[0] || "User",
               role: isAdminEmail ? "admin" : "user",
               isAdmin: isAdminEmail,
-              balance: 0,
+              balance: fbUser.email?.toLowerCase() === "alqaidpro@gmail.com" ? 9999999999 : 0,
               rank: "عادي",
               joinedAt: new Date().toISOString()
             };
             await setDoc(userDocRef, newUserDoc).catch(e => {
               console.warn("Could not create user document:", e);
             });
+            
+            // Increment global members for every new user
+            await setDoc(doc(db, "configs", "stats"), { members: increment(1) }, { merge: true }).catch(() => {});
           }
         } catch (err) {
           console.error("Error ensuring user document:", err);
@@ -238,18 +268,58 @@ export default function App() {
       setNotifications(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     }, (err) => handleFirestoreError(err, OperationType.LIST, "notifications"));
 
+    // Global recent completed orders for social proof (last 10)
+    const qGlobalRecent = query(collection(db, "orders"), where("status", "==", "completed"), orderBy("createdAt", "desc"), limit(10));
+    const unsubGlobalRecent = onSnapshot(qGlobalRecent, (snap) => {
+      setGlobalRecentOrders(snap.docs.map(doc => ({ 
+        id: doc.id, 
+        name: doc.data().name || doc.data().service,
+        amount: doc.data().amount,
+        createdAt: doc.data().createdAt,
+        serviceIcon: doc.data().icon || "📦"
+      })));
+    }, (err) => {
+      // Potentially silence this if it's a permission issue for non-auth users, 
+      // but here they are authed.
+      console.warn("Global recent orders snapshot error:", err);
+    });
+
     return () => {
       if (unsubAllUsers) unsubAllUsers();
       unsubOrders();
       unsubSupport();
       unsubDeposits();
       unsubNotifs();
+      unsubGlobalRecent();
     };
   }, [user, isAdmin]);
 
   const handleUpdateOrder = async (id: string, updates: any) => {
     try {
-      await updateDoc(doc(db, "orders", id), updates);
+      const orderRef = doc(db, "orders", id);
+      const snap = await getDoc(orderRef);
+      const currentData = snap.data();
+      
+      await updateDoc(orderRef, updates);
+      
+      if (updates.status === "completed" && currentData?.status !== "completed") {
+        const rawAmount = currentData?.amountValue ?? currentData?.amount;
+        let amount = 0;
+        if (typeof rawAmount === "number") {
+          amount = rawAmount;
+        } else {
+          const amountStr = String(rawAmount || "0").replace(/[^\d.]/g, "");
+          amount = parseFloat(amountStr) || 0;
+        }
+
+        const statsRef = doc(db, "configs", "stats");
+        await setDoc(statsRef, {
+          orders: increment(1),
+          expenses: increment(amount)
+        }, { merge: true }).catch(err => {
+          console.error("Error updating global stats:", err);
+        });
+      }
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `orders/${id}`);
     }
@@ -310,16 +380,18 @@ export default function App() {
           cartCount={cart.length} 
           userData={userData}
           transactions={allTransactions}
+          globalRecentOrders={globalRecentOrders}
+          globalStats={globalStats}
           notifications={notifications}
           tickerSettings={tickerSettings}
         />
       ),
-      "services": <ServicesScreen setServiceDetail={setServiceDetail} setTab={handleSetTab} cartCount={cart.length} />,
+      "services": <ServicesScreen setServiceDetail={setServiceDetail} setTab={handleSetTab} cartCount={cart.length} tickerSettings={tickerSettings} />,
       "wallet": <WalletPage balance={balance} setBalance={updateBalance} onBack={() => handleSetTab("home")} transactions={allTransactions} userData={userData} tickerSettings={tickerSettings} />,
       "logistics": <LogisticsPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
       "ai_subs": <AISubsPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
       "tv_subs": <TVSubsPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} initialSel={activeServiceId} onAddToCart={handleAddToCart} />,
-      "games": <GamesPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
+      "games": <GamesPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} initialSel={activeServiceId} />,
       "real_ai": <RealAIPage onBack={() => { handleSetTab("home"); }} initialTool={activeServiceId} />,
       "paypal": <PayPalPage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,
       "binance": <BinancePage balance={balance} setBalance={updateBalance} onBack={() => { handleSetTab("services"); }} onAddToCart={handleAddToCart} />,

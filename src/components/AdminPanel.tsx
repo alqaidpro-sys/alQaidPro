@@ -32,7 +32,7 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
   const [tab, setTab] = useState<AdminTab>("users");
   const [submitting, setSubmitting] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [tickers, setTickers] = useState({ top: "", bottom: "" });
+  const [tickers, setTickers] = useState({ top: "", bottom: "", services: "" });
 
   useEffect(() => {
     if (tab === "settings") {
@@ -41,7 +41,11 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
           const snap = await getDoc(doc(db, "configs", "tickers"));
           if (snap.exists()) {
             const d = snap.data();
-            setTickers({ top: d.top || "", bottom: d.bottom || "" });
+            setTickers({ 
+              top: d.top || "", 
+              bottom: d.bottom || "",
+              services: d.services || ""
+            });
           }
         } catch (err) {
           console.error("Error fetching tickers:", err);
@@ -100,6 +104,20 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
           totalTopup: increment(amount),
           rewardPoints: increment(pointsToAdd)
         });
+
+        // 3. Update global stats (Safe check)
+        const statsRef = doc(db, "configs", "stats");
+        // We use merge: true with setDoc to initialize if missing, but in transaction we must check existence
+        try {
+          transaction.update(statsRef, {
+            recharge: increment(amount)
+          });
+        } catch (e) {
+          // If stats doc doesn't exist, we can't 'update' in transaction easily without creating first
+          // But since App.tsx ensures it, we'll just log it or we could handle it. 
+          // For now, let's keep it simple as App.tsx handles creation.
+          console.warn("Stats document not found during transaction update");
+        }
       });
 
       // Send notification
@@ -250,6 +268,7 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
       await setDoc(doc(db, "configs", "tickers"), {
         top: tickers.top,
         bottom: tickers.bottom,
+        services: tickers.services,
         updatedAt: serverTimestamp()
       }, { merge: true });
       alert("✅ تم حفظ إعدادات شرائط الأخبار بنجاح");
@@ -378,6 +397,18 @@ export function AdminPanel({ onBack, orders = [], onUpdateUser, users = [], onUp
                     style={{ width: "100%", padding: 15, borderRadius: 14, background: T.bg, border: `1px solid ${T.border}`, color: "white", fontSize: 13, outline: "none", resize: "none" }}
                   />
                   <div style={{ fontSize: 10, color: T.sub, marginTop: 5 }}>* هذا الشريط يظهر تحت بطاقة المحفظة في الصفحة الرئيسية.</div>
+                </div>
+
+                <div style={{ marginBottom: 25 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: T.sub, display: "block", marginBottom: 8 }}>شريط أخبار صفحة الخدمات (المتحرك)</label>
+                  <textarea 
+                    value={tickers.services}
+                    onChange={(e) => setTickers({...tickers, services: e.target.value})}
+                    placeholder="اكتب الخبر هنا (سيظهر في صفحة الخدمات استكشف)..."
+                    rows={3}
+                    style={{ width: "100%", padding: 15, borderRadius: 14, background: T.bg, border: `1px solid ${T.border}`, color: "white", fontSize: 13, outline: "none", resize: "none" }}
+                  />
+                  <div style={{ fontSize: 10, color: T.sub, marginTop: 5 }}>* خبر خاص يظهر فقط في شريط التصفح بصفحة الخدمات.</div>
                 </div>
 
                 <button 
