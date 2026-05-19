@@ -361,6 +361,45 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
           </div>
         </div>
       )}
+      {/* SEO & About Section */}
+      <div className="fadeUp" style={{ padding: "0 20px", marginTop: 40, animationDelay: "0.5s" }}>
+        <div style={{ 
+          background: "rgba(15,23,42,0.5)", 
+          borderRadius: 24, 
+          padding: 24, 
+          border: "1px solid rgba(255,255,255,0.03)",
+          textAlign: "right"
+        }}>
+          <div style={{ fontSize: 18, fontWeight: 900, color: G.text, marginBottom: 12, fontFamily: G.font }}>حول منصة القائد للخدمات والشحن 💎</div>
+          <p style={{ fontSize: 13, color: G.sub, fontFamily: G.font, lineHeight: "1.8", marginBottom: 16 }}>
+            تعتبر منصة <strong>القائد للخدمات والشحن</strong>، بإدارة <strong>المهندس محمد الشيمي</strong>، الوجهة الأولى والآمنة في مصر والوطن العربي للحصول على الخدمات الرقمية المتكاملة. نحن متخصصون في <strong>القائد الهندسة</strong> وتقديم الحلول التقنية المبتكرة.
+          </p>
+          
+          <div style={{ fontSize: 14, fontWeight: 800, color: G.blue, marginBottom: 10, fontFamily: G.font }}>خدماتنا المتميزة:</div>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: "8px 12px" }}>
+            {[
+              "شحن ألعاب (ببجي موبايل، فري فاير، فالورانت)",
+              "خدمات القائد للشحن الدولي",
+              "المهندس محمد الشيمي - استشارات تقنية",
+              "شراء من تيمو (Temu) ونون وأمازون",
+              "اشتراكات نتفليكس بريميوم وشاهد VIP",
+              "تفعيل يوتيوب بريميوم وسبوتيفاي",
+              "أدوات الذكاء الاصطناعي (ChatGPT, Claude, Gemini)",
+              "تحويلات Binance Pay و Pyypl الرسمية",
+              "خدمات فودافون كاش وإنستا باي InstaPay",
+              "القائد للخدمات اللوجستية والتخليص الجمركي",
+              "القائد محمد الشيمي للبرمجيات",
+              "شحن وتوصيل الطلبات أونلاين"
+            ].map((s, i) => (
+              <li key={i} style={{ fontSize: 11, color: "rgba(148,163,184,0.8)", fontFamily: G.font, background: "rgba(255,255,255,0.02)", padding: "4px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.02)" }}># {s}</li>
+            ))}
+          </ul>
+          
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.05)", fontSize: 11, color: "rgba(148,163,184,0.5)", fontFamily: G.font }}>
+            جميع الحقوق محفوظة لمنصة القائد &copy; 2026 | م. محمد الشيمي
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
