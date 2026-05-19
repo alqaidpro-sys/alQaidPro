@@ -47,8 +47,8 @@ service cloud.firestore {
 
     // Collection Rules
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin() || isOwner(userId);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isOwner(userId); 
       allow update: if isAdmin() || 
                     (isOwner(userId) && 
@@ -57,7 +57,8 @@ service cloud.firestore {
                        !incoming().diff(existing()).affectedKeys().contains('balance') || // Balance not changed
                        incoming().balance <= existing().balance || // Balance decreased
                        (incoming().balance - existing().balance == existing().rewardPoints - incoming().rewardPoints) // Balance increased via points conversion
-                     ));
+                     )) ||
+                    (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['rewardPoints']));
     }
 
     match /system/connection_test {
@@ -80,7 +81,7 @@ service cloud.firestore {
 
     match /notifications/{notifId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isAdmin() || (isSignedIn() && incoming().userId == request.auth.uid);
+      allow create: if isSignedIn();
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
@@ -94,7 +95,7 @@ service cloud.firestore {
 
     match /configs/{configId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() || (isSignedIn() && configId == "stats");
     }
   }
 }

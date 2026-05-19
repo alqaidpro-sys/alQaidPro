@@ -151,7 +151,12 @@ export function AuthScreen({ onLogin }: { onLogin: (email: string) => void }) {
         myCode += charSet.charAt(Math.floor(Math.random() * charSet.length));
       }
 
-      // 2. Check if referral code entered by user is valid
+      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+      const user = userCred.user;
+      
+      console.log("Auth success, checking referral and creating Firestore profile...");
+
+      // 2. Check if referral code entered by user is valid (Now as authenticated user)
       let referrerUid = null;
       if (refCode.trim()) {
         const usersRef = collection(db, "users");
@@ -159,19 +164,9 @@ export function AuthScreen({ onLogin }: { onLogin: (email: string) => void }) {
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           referrerUid = querySnapshot.docs[0].id;
-        } else {
-          // If a code was entered but not found, we can either error or ignore. 
-          // User said "إذا سجل منه و كتبه أثناء التسجيل ياخد ١٠ نقاط". 
-          // Erroring is safer if they think they applied it.
-          setLoading(false);
-          return setErrorMsg("كود الدعوة المدخل غير صحيح");
         }
       }
 
-      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-      const user = userCred.user;
-      
-      console.log("Auth success, creating Firestore profile...");
       // Create user document
       await setDoc(doc(db, "users", user.uid), {
         name,
