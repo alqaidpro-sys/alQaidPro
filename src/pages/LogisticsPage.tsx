@@ -194,6 +194,7 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
   const handleAddToCartInternal = () => {
     if (!allFilled) { setErr("يرجى ملء جميع الحقول"); return; }
     if (svc?.priceField && origPrice <= 0) { setErr("يرجى إدخال السعر"); return; }
+    if (svc?.id === "amazon_bal" && origPrice < 2900) { setErr("⚠️ الحد الأدنى لشحن رصيد أمازون هو 2900 ج.م"); return; }
     if (onAddToCart && svc) {
       onAddToCart({...svc, total: finalEgp, fields: vals});
       setShowAdded(true);
@@ -204,7 +205,7 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
     if (!allFilled)  { setErr("يرجى ملء جميع الحقول"); return; }
     if (svc?.priceField && origPrice <= 0) { setErr("يرجى إدخال السعر الحقيقي للمنتج"); return; }
     if (svc?.priceField && balance < finalEgp) { setErr("رصيدك غير كافٍ — اشحن المحفظة أولاً"); return; }
-    if (svc.id === "amazon_bal" && origPrice < 1250) { setErr("⚠️ الحد الأدنى لشحن رصيد أمازون هو 1250 ج.م"); return; }
+    if (svc.id === "amazon_bal" && origPrice < 2900) { setErr("⚠️ الحد الأدنى لشحن رصيد أمازون هو 2900 ج.م"); return; }
     
     setErr(""); 
     setLoading(true);
@@ -352,7 +353,7 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
                     <span style={{ fontSize:12, color:C.sub, fontWeight:700 }}>
                       {svc.id === "amazon_bal" ? "المبلغ المطلوب دفعه (بالجنيه)" : "السعر الحقيقي للمنتج (بالجنيه)"}
                     </span>
-                    <span style={{ fontSize:10, color:C.yellow }}>{svc.id === "amazon_bal" ? "أقل مبلغ 1250 ج.م" : "أدخل السعر الأصلي"}</span>
+                    <span style={{ fontSize:10, color:C.yellow }}>{svc.id === "amazon_bal" ? "أقل مبلغ 2900 ج.م" : "أدخل السعر الأصلي"}</span>
                   </div>
                   <div style={{ position:"relative" }}>
                     <input className="inp" value={price} onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g,""))}
@@ -402,7 +403,7 @@ export default function LogisticsPage({ balance=5000, setBalance, onBack=()=>{},
               <div style={{ background:"rgba(212,160,23,.06)", border:`1px solid rgba(212,160,23,.22)`, borderRadius:11, padding:"11px 14px" }}>
                 <p style={{ fontSize:11, color:C.yellow, lineHeight:1.85 }}>
                   {svc.id === "amazon_bal" 
-                    ? "⚠️ تنبيه: أقل مبلغ لشحن رصيد أمازون هو 1250 ج.م. كل 1000 جنيه شحن يمنحك 2100 جنيه رصيد أمازون."
+                    ? "⚠️ تنبيه: أقل مبلغ لشحن رصيد أمازون هو 2900 ج.م. كل 1000 جنيه شحن يمنحك 2100 جنيه رصيد أمازون."
                     : "⚠️ تنبيه: إذا كان السعر المُدخل غير مطابق للسعر الحقيقي للمنتج، سيتم إلغاء الطلب تلقائياً وإرجاع كامل الرصيد."
                   }
                 </p>
