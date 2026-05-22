@@ -48,6 +48,9 @@ import TVSubsPage from "./pages/TVSubsPage";
 import GamesPage from "./pages/GamesPage";
 import RealAIPage from "./pages/RealAIPage";
 
+// وضع صيانة الموقع (اجعله true ليظهر للزوار أن الموقع قيد الصيانة، أو false ليعود للعمل كالمعتاد)
+const UNDER_MAINTENANCE = true;
+
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
@@ -67,6 +70,7 @@ export default function App() {
   const [pendingPopup, setPendingPopup] = useState<any>(null);
   const [tickerSettings, setTickerSettings] = useState({ top: "", bottom: "", services: "" });
   const [globalStats, setGlobalStats] = useState<any>({});
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
  
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "configs", "tickers"), (snap) => {
@@ -385,6 +389,116 @@ export default function App() {
     setActiveServiceId(svcId);
   };
 
+  const renderMaintenanceScreen = () => {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "40px 24px",
+        textAlign: "center",
+        background: G.bg,
+        color: G.text,
+        fontFamily: G.font,
+        position: "relative"
+      }}>
+        {/* Glowing Ambient Circles */}
+        <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 220, height: 220, background: "radial-gradient(circle,rgba(59,130,246,0.18),transparent 70%)", pointerEvents: "none" }} />
+
+        {/* Brand Banner */}
+        <div style={{
+          marginBottom: 36,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6
+        }}>
+          <span style={{ fontSize: 26, fontWeight: 900, background: "linear-gradient(135deg,#3b82f6,#60a5fa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            منصة القائد للخدمات الرقمية 👑
+          </span>
+          <span style={{ fontSize: 9, letterSpacing: 2, color: G.sub, textTransform: "uppercase", fontWeight: 700 }}>
+            ALQAID FOR DIGITAL SERVICES
+          </span>
+        </div>
+
+        {/* Animated Maintenance Icon Container */}
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
+          style={{
+            width: 100,
+            height: 100,
+            borderRadius: 30,
+            background: "rgba(59,130,246,0.06)",
+            border: "1px dashed rgba(59,130,246,0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 44,
+            marginBottom: 28,
+            boxShadow: "0 0 35px rgba(59,130,246,0.12)"
+          }}
+        >
+          🛠️
+        </motion.div>
+
+        {/* Message Details */}
+        <h1 style={{ fontSize: 19, fontWeight: 900, marginBottom: 16, color: G.text, lineHeight: 1.45 }}>
+          جاري صيانة وتحديث المنصة حالياً ⚙️
+        </h1>
+        
+        <p style={{ fontSize: 13, color: G.sub, lineHeight: 1.85, marginBottom: 28, maxWidth: 360 }}>
+          نعتذر بشدة لجميع عملائنا الكرام عن هذا التوقف المؤقت. نقوم الآن بإجراء ترقيات وصيانة دورية شاملة للموقع والأنظمة لضمان حماية بياناتكم وتقديم الخدمات بأقصى سرعة ممكنة.
+        </p>
+
+        <div style={{
+          background: "rgba(59,130,246,0.03)",
+          border: "1px solid rgba(59,130,246,0.1)",
+          borderRadius: 20,
+          padding: "16px 20px",
+          width: "100%",
+          maxWidth: 360,
+          marginBottom: 36,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          boxShadow: "0 8px 30px rgba(0,0,0,0.25)"
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: G.blue }}>🛡️ طمأنة وتوضيح هام</div>
+          <p style={{ fontSize: 11.5, color: G.sub, lineHeight: 1.75, textAlign: "justify" }}>
+            جميع حساباتكم، طلباتكم النشطة، وأرصدة محفظتكم السابقة محفوظة وآمنة تماماً في قواعد البيانات، وسيتم استئناف العمل ومعالجتها من قبل المشرفين بمجرد الانتهاء من التحديث الجاري.
+          </p>
+        </div>
+
+        <p style={{ fontSize: 11, color: G.sub, opacity: 0.8, marginBottom: 40 }}>
+          نشكركم جزيل الشكر على تفهمكم الجميل ودعمكم الدائم لنا، وسنعود قريباً جداً بأفضل حُلّة! ✨
+        </p>
+
+        {/* Administrator Portal Secret Button */}
+        <button 
+          onClick={() => setShowAdminLogin(true)}
+          style={{
+            fontSize: 10,
+            color: G.sub,
+            opacity: 0.4,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            textDecoration: "underline",
+            marginTop: "auto",
+            transition: "opacity 0.2s"
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = "0.4"}
+        >
+          بوابة الإشراف والإدارة 🔑
+        </button>
+      </div>
+    );
+  };
+
   const renderScreen = () => {
     const screens: any = {
       "home": (
@@ -486,14 +600,55 @@ export default function App() {
     setLoading(true);
   };
 
+  // Calculate if the user is logged in as an administrator
+  const isAdminUser = (userData?.isAdmin === true) || (user?.email === "alqaidpro@gmail.com") || (userData?.email === "alqaidpro@gmail.com") || (userData?.role === "admin");
+
   return (
     <div dir="rtl" style={{ background: G.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", position: "relative", overflowX: "hidden" }}>
       {/* Ambient blobs */}
       <div style={{ position: "fixed", top: "-10%", right: "-15%", width: 500, height: 500, background: "radial-gradient(circle,rgba(59,130,246,0.055),transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
       <div style={{ position: "fixed", bottom: "-15%", left: "-10%", width: 400, height: 400, background: "radial-gradient(circle,rgba(16,185,129,0.035),transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
+      {/* Under Maintenance sticky indicator banner for Admin */}
+      {UNDER_MAINTENANCE && isAdminUser && (
+        <div style={{ 
+          background: "linear-gradient(90deg, #b91c1c, #dc2626)", 
+          color: "white", 
+          padding: "8px 12px", 
+          fontSize: 11, 
+          fontWeight: 800, 
+          textAlign: "center",
+          boxShadow: "0 4px 15px rgba(220,38,38,0.3)",
+          position: "sticky",
+          top: 0,
+          zIndex: 9999,
+          direction: "rtl"
+        }}>
+          🚧 وضع الصيانة نشط حالياً! الموقع مغلق لجميع الزوار. تظهر لك المنصة لأنك تملك صلاحية الإدارة (alqaidpro@gmail.com).
+        </div>
+      )}
+
       <div style={{ position: "relative", zIndex: 1 }}>
-        {!user ? (
+        {UNDER_MAINTENANCE && !isAdminUser ? (
+          showAdminLogin ? (
+            <div style={{ position: "relative" }}>
+              <button 
+                onClick={() => setShowAdminLogin(false)}
+                style={{
+                  position: "absolute", top: 16, right: 16,
+                  padding: "8px 14px", borderRadius: 12,
+                  background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
+                  color: G.text, fontSize: 11, cursor: "pointer", zIndex: 100, fontWeight: 700
+                }}
+              >
+                ⬅️ رجوع للصيانة
+              </button>
+              <AuthScreen onLogin={handleLogin} />
+            </div>
+          ) : (
+            renderMaintenanceScreen()
+          )
+        ) : !user ? (
           <AuthScreen onLogin={handleLogin} />
         ) : (
           <>
