@@ -49,7 +49,7 @@ import GamesPage from "./pages/GamesPage";
 import RealAIPage from "./pages/RealAIPage";
 
 // وضع صيانة الموقع (اجعله true ليظهر للزوار أن الموقع قيد الصيانة، أو false ليعود للعمل كالمعتاد)
-const UNDER_MAINTENANCE = true;
+const UNDER_MAINTENANCE = false;
 
 export default function App() {
   const [user, setUser] = useState<any>(null);

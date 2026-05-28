@@ -164,15 +164,15 @@ export function AnnouncementModal({ onClose }: { onClose: () => void }) {
       >
         <div style={{ position: "absolute", top: -50, right: -50, width: 150, height: 150, background: "rgba(59,142,247,0.15)", borderRadius: "50%", filter: "blur(40px)" }} />
         
-        <div style={{ fontSize: 48, marginBottom: 20 }}>✨</div>
-        <h2 style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 15, fontFamily: G.font }}>إشعار هام</h2>
+        <div style={{ fontSize: 44, marginBottom: 16 }}>🐑✨</div>
+        <h2 style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12, fontFamily: G.font }}>تهنئة وعرض عيد الأضحى المبارك 👑</h2>
         
         <p style={{ 
-          fontSize: 15, color: "rgba(255,255,255,0.8)", 
-          lineHeight: 1.8, marginBottom: 30, fontWeight: 600, 
-          fontFamily: G.font, textAlign: "center"
+          fontSize: 13, color: "rgba(255,255,255,0.9)", 
+          lineHeight: 1.85, marginBottom: 26, fontWeight: 600, 
+          fontFamily: G.font, textAlign: "justify"
         }}>
-          صباح الخير عليكم الحمد لله التطبيق يعمل بشكل جيد ميه في الميه يمكنكم الآن الاستمتاع بكل شيء ❤️
+          كل عام وأنتم بألف خير بمناسبة عيد الأضحى المبارك! نود إعلامكم بإعادة فتح المنصة بكامل طاقتها ويسعدنا تقديم عرض العيد الاستثنائي: <strong style={{ color: "#10b981", fontSize: 14 }}>زيادة 30% مجانية على أي رصيد يتم شحنه!</strong> شاحن 1000ج سينزل له 1300ج رصيد فوراً! العرض سارٍ طوال فترة العيد. عيدكم مبارك وسعيد! ❤️🎁
         </p>
 
         <button 
@@ -185,7 +185,7 @@ export function AnnouncementModal({ onClose }: { onClose: () => void }) {
             boxShadow: "0 10px 25px rgba(59,142,247,0.4)"
           }}
         >
-          حسناً، فهمت
+          كل عام وأنتم بخير 🥳
         </button>
       </motion.div>
     </motion.div>

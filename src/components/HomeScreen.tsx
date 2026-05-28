@@ -113,19 +113,25 @@ export function HomeScreen({ setTab, balance = 0, cartCount = 0, userData, trans
       {/* Promo Banner */}
       <div className="fadeUp" style={{ padding: "0 20px", marginBottom: 20, animationDelay: "0.2s" }}>
         <div style={{ 
-          background: "linear-gradient(135deg, #064e3b, #065f46)", 
+          background: "linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.05))", 
           borderRadius: 16, 
           padding: "14px 18px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          border: "1px solid rgba(16,185,129,0.2)"
+          border: "1px solid rgba(16,185,129,0.25)",
+          boxShadow: "0 8px 30px rgba(16,185,129,0.05)"
         }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 900, color: "white", fontFamily: G.font }}>عرض الأسبوع ⚡</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", marginTop: 2, fontFamily: G.font }}>خصم يصل لـ 90% على اشتراكات AI</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "#10b981", fontFamily: G.font, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>🐏 عرض عيد الأضحى المبارك!</span>
+              <span style={{ fontSize: 10, background: "rgba(16,185,129,0.2)", color: "#10b981", padding: "2px 6px", borderRadius: 6, fontWeight: 900 }}>نشط ⚡</span>
+            </div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", marginTop: 4, fontFamily: G.font, lineHeight: 1.5 }}>
+              عرض الشحن الكاش والمحافظ: احصل على <strong style={{ color: "#10b981" }}>٣٠٪ زيادة مجانية</strong> تضاف لحسابك فوراً عند أي عملية شحن!
+            </div>
           </div>
-          <div style={{ background: "#4ade80", color: "#064e3b", padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 900 }}>استفد الآن</div>
+          <div onClick={() => setTab("wallet")} className="tap" style={{ background: "#10b981", color: "#050810", padding: "6px 12px", borderRadius: 10, fontSize: 11, fontWeight: 900, cursor: "pointer", whiteSpace: "nowrap", marginRight: 10 }}>اشحن الآن</div>
         </div>
       </div>
 
